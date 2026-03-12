@@ -1,224 +1,156 @@
-Todo el backend FastAPI.
+
+# Backend Service
+
+The backend service is implemented using **FastAPI** and is responsible for all core system functionality.
+
+It exposes a REST API consumed by the frontend and handles:
+
+- authentication
+- source management
+- news ingestion
+- alerts processing
+- notifications
+- RSS crawling
+
+---
+
+# Backend Architecture
+
+The backend follows a **modular architecture** based on domain-driven organization.
+
+Each module contains its own:
+
+- API endpoints
+- business logic
+- database interaction
+- data schemas
+
+This approach improves maintainability and allows features to evolve independently.
+
+---
+
+# Backend Directory Structure
+
+```
 
 backend/
 │
 ├── app/
 │   ├── main.py
+│
 │   ├── api/
 │   │   ├── router.py
 │   │   └── deps.py
-│   │
+│
 │   ├── core/
 │   │   ├── config.py
-│   │   ├── security.py
 │   │   ├── database.py
+│   │   ├── security.py
 │   │   └── logging_config.py
-│   │
-│   ├── models/
-│   │   └── __init__.py
-│   │
-│   ├── schemas/
-│   │   └── __init__.py
-│   │
+│
 │   ├── modules/
 │   │   ├── auth/
-│   │   │   ├── api.py
-│   │   │   ├── service.py
-│   │   │   ├── repository.py
-│   │   │   ├── models.py
-│   │   │   └── schemas.py
-│   │   │
 │   │   ├── users/
-│   │   │   ├── api.py
-│   │   │   ├── service.py
-│   │   │   ├── repository.py
-│   │   │   ├── models.py
-│   │   │   └── schemas.py
-│   │   │
 │   │   ├── sources/
-│   │   │   ├── api.py
-│   │   │   ├── service.py
-│   │   │   ├── repository.py
-│   │   │   ├── models.py
-│   │   │   └── schemas.py
-│   │   │
 │   │   ├── news/
-│   │   │   ├── api.py
-│   │   │   ├── service.py
-│   │   │   ├── repository.py
-│   │   │   ├── models.py
-│   │   │   └── schemas.py
-│   │   │
 │   │   ├── alerts/
-│   │   │   ├── api.py
-│   │   │   ├── service.py
-│   │   │   ├── repository.py
-│   │   │   ├── models.py
-│   │   │   └── schemas.py
-│   │   │
 │   │   ├── notifications/
-│   │   │   ├── api.py
-│   │   │   ├── service.py
-│   │   │   ├── repository.py
-│   │   │   ├── models.py
-│   │   │   └── schemas.py
-│   │   │
 │   │   └── crawler/
-│   │       ├── scheduler.py
-│   │       ├── rss_client.py
-│   │       ├── parser.py
-│   │       ├── service.py
-│   │       └── deduplication.py
-│   │
-│   └── tests/
-│       ├── conftest.py
-│       ├── test_auth.py
-│       ├── test_sources.py
-│       ├── test_news.py
-│       ├── test_alerts.py
-│       └── test_notifications.py
 │
-├── alembic/
-├── alembic.ini
+│   └── tests/
+│
 ├── requirements.txt
 ├── Dockerfile
-└── .env.example
+└── README.md
 
-1. Qué significa cada parte del backend
-app/main.py
+```
 
-Punto de entrada de FastAPI.
+---
 
-Contiene:
+# Module Pattern
 
-creación de la app
+Each backend module follows this structure:
 
-registro del router principal
+```
 
-eventos de arranque si los necesitáis
+module/
+├── api.py
+├── service.py
+├── repository.py
+├── models.py
+└── schemas.py
 
-configuración básica
+```
 
-app/api/router.py
+### `api.py`
+Defines FastAPI endpoints.
 
-Router central que junta los routers de todos los módulos.
+### `service.py`
+Contains business logic and orchestrates system behavior.
 
-Ejemplo:
+### `repository.py`
+Handles database interaction.
 
-auth router
+### `models.py`
+Defines ORM models.
 
-sources router
+### `schemas.py`
+Defines request and response validation schemas.
 
-news router
+---
 
-alerts router
+# Core Components
 
-notifications router
+## API Layer
+Responsible for HTTP endpoints and request validation.
 
-app/api/deps.py
+## Service Layer
+Contains business rules and application logic.
 
-Dependencias compartidas:
+## Repository Layer
+Abstracts database access.
 
-usuario autenticado
+## Core Utilities
+Shared utilities such as:
 
-sesión de base de datos
+- database configuration
+- security utilities
+- logging
+- application settings
 
-roles si hubiera
+---
 
-app/core/
+# Crawler
 
-Todo lo global.
+The crawler is implemented inside the backend as a scheduled task.
 
-config.py
+Its responsibilities include:
 
-Configuración centralizada con variables de entorno.
+- fetching RSS feeds
+- parsing entries
+- storing new articles
+- triggering alert matching
 
-security.py
+This design simplifies deployment and reduces system complexity.
 
-JWT, hash de contraseñas, utilidades de auth.
+---
 
-database.py
+# Testing
 
-Conexión a PostgreSQL, engine, session, base declarativa.
+Backend tests are located in:
 
-logging_config.py
+```
 
-Configuración de logs.
+app/tests/
 
-app/modules/
+```
 
-Aquí vive el backend de verdad.
+Tests will cover:
 
-Cada módulo tiene su responsabilidad.
+- API endpoints
+- service logic
+- alert matching
+- crawler functionality
+```
 
-Patrón por módulo
-
-Cada módulo tendrá normalmente:
-
-api.py → endpoints
-
-service.py → lógica de negocio
-
-repository.py → acceso a BD
-
-models.py → modelos ORM
-
-schemas.py → esquemas Pydantic
-
-Este patrón es buenísimo para mantenibilidad.
-
-2. Qué hace cada archivo dentro de un módulo
-
-Voy con un ejemplo, por ejemplo alerts.
-
-alerts/api.py
-
-Define endpoints como:
-
-crear alerta
-
-listar alertas
-
-borrar alerta
-
-editar alerta
-
-Aquí no debe vivir la lógica gorda.
-
-alerts/service.py
-
-Lógica de negocio:
-
-crear alerta
-
-validar reglas
-
-activar/desactivar
-
-coordinar con repository
-
-alerts/repository.py
-
-Acceso a datos:
-
-guardar alerta
-
-buscar alertas del usuario
-
-filtrar alertas activas
-
-Así, si cambia la BD o cambia el ORM, el impacto se reduce.
-
-alerts/models.py
-
-Modelo ORM de la tabla.
-
-alerts/schemas.py
-
-Request/response schemas:
-
-AlertCreate
-
-AlertUpdate
-
-AlertRead
+---
