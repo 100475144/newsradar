@@ -32,7 +32,7 @@ scripts/
 These scripts are optional but help standardize development workflows across the team.
 
 As the project evolves, additional scripts may be added to automate setup and testing.
-```
+
 
 ---
 
