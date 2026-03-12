@@ -23,3 +23,15 @@ The backend also periodically collects news from external RSS feeds, processes t
 ---
 
 # High-Level Architecture
+User
+|
+v
+Frontend (React + Vite)
+|
+| HTTP / JSON
+v
+Backend API (FastAPI)
+|
+| SQL
+v
+PostgreSQL
