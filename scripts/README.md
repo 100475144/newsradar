@@ -33,23 +33,3 @@ These scripts are optional but help standardize development workflows across the
 
 As the project evolves, additional scripts may be added to automate setup and testing.
 
-
----
-
-# Resultado
-
-Con estos READMEs vuestro repo tendrá:
-
-```
-newsradar/
-│
-├── README.md
-├── backend/
-│   └── README.md
-├── frontend/
-│   └── README.md
-├── docs/
-│   └── README.md
-└── scripts/
-    └── README.md
-```
