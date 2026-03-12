@@ -20,18 +20,4 @@ The system is composed of four main components:
 The backend exposes a REST API consumed by the frontend.  
 The backend also periodically collects news from external RSS feeds, processes them, and generates alerts when matching user-defined keywords.
 
----
 
-# High-Level Architecture
-User
-|
-v
-Frontend (React + Vite)
-|
-| HTTP / JSON
-v
-Backend API (FastAPI)
-|
-| SQL
-v
-PostgreSQL
