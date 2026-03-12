@@ -1,4 +1,3 @@
-```markdown
 # NEWSRADAR
 
 NEWSRADAR is a modular news monitoring system that continuously collects news from RSS sources and alerts users when relevant content appears.
