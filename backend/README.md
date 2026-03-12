@@ -1,4 +1,3 @@
-
 # Backend Service
 
 The backend service is implemented using **FastAPI** and is responsible for all core system functionality.
@@ -82,19 +81,19 @@ module/
 
 ```
 
-### `api.py`
+### api.py
 Defines FastAPI endpoints.
 
-### `service.py`
+### service.py
 Contains business logic and orchestrates system behavior.
 
-### `repository.py`
+### repository.py
 Handles database interaction.
 
-### `models.py`
+### models.py
 Defines ORM models.
 
-### `schemas.py`
+### schemas.py
 Defines request and response validation schemas.
 
 ---
@@ -102,15 +101,19 @@ Defines request and response validation schemas.
 # Core Components
 
 ## API Layer
+
 Responsible for HTTP endpoints and request validation.
 
 ## Service Layer
+
 Contains business rules and application logic.
 
 ## Repository Layer
+
 Abstracts database access.
 
 ## Core Utilities
+
 Shared utilities such as:
 
 - database configuration
@@ -151,6 +154,4 @@ Tests will cover:
 - service logic
 - alert matching
 - crawler functionality
-```
 
----
