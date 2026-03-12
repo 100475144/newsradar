@@ -171,6 +171,4 @@ Development follows a collaborative workflow using:
 - modular feature branches
 
 This ensures code quality and maintainability throughout the project lifecycle.
-```
 
----
