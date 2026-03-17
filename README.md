@@ -132,19 +132,21 @@ This structure enables independent development and reduces cross-module dependen
 
 Instructions for running the system will be added as the development progresses.
 
-Future setup will include:
+Setup for running the system:
 
+- **IMPORTANT**: Execute from the root directory of the project
 ```
 
+docker compose build
 docker compose up
 
 ```
 
-to start:
+This will start: 
+- Backend container with FastAPI running on port 8000, it runs in development mode **for now**.
+- Database container with PostgreSQL running on port 5432, 
+  user and password to the DB are defined on ``` docker-compose.yaml ``` **for now**.
 
-- frontend
-- backend
-- database
 
 ---
 
