@@ -1,16 +1,18 @@
+from datetime import datetime, timezone
+from app.api.endpoints import health
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from .deps import get_db
 
 api_router = APIRouter()
-
+api_router.include_router(health.router)
 
 @api_router.get("/health", tags=["health"])
 def health_check() -> dict:
     return {
         "status": "ok",
-        "service": "backend",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
 @api_router.get("/health/db", tags=["health"])
