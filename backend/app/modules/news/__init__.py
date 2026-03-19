@@ -1,0 +1,1 @@
+"""Módulo news: expone los componentes principales del dominio de noticias."""
