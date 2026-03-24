@@ -146,7 +146,7 @@ This will start:
 - Backend container with FastAPI running on port 8000, it runs in development mode **for now**.
 - Database container with PostgreSQL running on port 5432, 
   user and password to the DB are defined on ``` docker-compose.yaml ``` **for now**.
-
+- Frontend container with React + Vite running on port 5173, it runs in development mode **for now**.
 
 ---
 
