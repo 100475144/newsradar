@@ -1,5 +1,5 @@
 
-| Sprint       | Objetivo                       |             |
+| Sprint       | Objetivo                       | Estado      |
 | ------------ | ------------------------------ |-------------|
 | Sprint 0     | Preparación de infraestructura | [completed] |
 | Sprint 1     | Usuarios y autenticación       |             |
