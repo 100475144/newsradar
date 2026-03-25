@@ -781,3 +781,478 @@ Integración del sprint.
 
 Usuarios pueden crear alertas listas para usar en matching luego.
 
+---
+
+# SPRINT 4 — Monitorización de noticias
+
+## Objetivo real
+
+Meter **noticias reales en el sistema** desde RSS → DB (base del valor del proyecto) 
+
+---
+
+## ORDEN EXACTO
+
+---
+
+## Paso 4.1 — Empieza P3 (CRÍTICO)
+
+### Qué toca
+
+Crawler completo (pieza central del sistema)
+
+### Archivos que modifica/crea
+
+```
+/backend/app/modules/crawler/rss_client.py
+/backend/app/modules/crawler/parser.py
+/backend/app/modules/crawler/service.py
+/backend/app/modules/crawler/scheduler.py
+/backend/app/modules/crawler/deduplication.py
+
+/backend/app/modules/news/models.py
+/backend/app/modules/news/repository.py
+/backend/app/modules/news/service.py
+/backend/app/modules/news/schemas.py
+```
+
+### Qué debe hacer (MUY ATÓMICO)
+
+1. **RSS Client**
+
+   * hacer fetch HTTP de RSS
+   * manejar errores (timeout, invalid XML)
+
+2. **Parser**
+
+   * parsear XML → items
+   * extraer:
+
+     * title
+     * link
+     * description
+     * pub_date
+
+3. **Modelo News**
+
+   * campos:
+
+     ```
+     id
+     title
+     content/summary
+     url
+     published_at
+     source_id
+     created_at
+     ```
+   * índice en `url` (clave para deduplicación)
+
+4. **Deduplicación**
+
+   * comprobar si `url` ya existe antes de insertar
+
+5. **Service crawler**
+
+   * flujo:
+
+     ```
+     for source in active_sources:
+         fetch RSS
+         parse items
+         for item:
+             if not duplicate:
+                 save news
+     ```
+
+6. **Scheduler**
+
+   * ejecutar cada X minutos (configurable)
+
+---
+
+### Resultado esperado
+
+ Ya hay noticias reales en DB automáticamente
+
+---
+
+## Paso 4.2 — Sigue P6
+
+### Qué toca
+
+Infraestructura del crawler
+
+### Archivos
+
+```
+/backend/.env
+/docker-compose.yml
+```
+
+### Qué hace
+
+* variable:
+
+  ```
+  CRAWLER_INTERVAL=300
+  ```
+* asegurar que el scheduler arranca con FastAPI
+* logging del crawler
+
+---
+
+### Resultado
+
+ El crawler se ejecuta solo sin intervención
+
+---
+
+## Paso 4.3 — Empieza P2
+
+### Qué toca
+
+Integración con sources
+
+### Archivos
+
+```
+/backend/app/modules/sources/service.py
+/backend/app/modules/sources/repository.py
+```
+
+### Qué hace
+
+* método:
+
+  ```
+  get_active_sources(user_id?)
+  ```
+* opcional:
+
+  * filtrar por user
+  * filtrar por categoría
+
+---
+
+### Resultado
+
+ El crawler usa sources reales del sistema
+
+---
+
+## Paso 4.4 — Empieza P5
+
+### Qué toca
+
+UI de noticias
+
+### Archivos
+
+```
+/frontend/src/pages/NewsPage.jsx
+/frontend/src/api/newsApi.js
+/frontend/src/components/NewsCard.jsx
+```
+
+### Qué hace
+
+* listar noticias
+* mostrar:
+
+  * título
+  * resumen
+  * fecha
+  * fuente
+* paginación básica
+
+---
+
+### Resultado
+
+ Usuario ve noticias reales en frontend
+
+---
+
+## Paso 4.5 — Sigue P4
+
+### Qué toca
+
+Preparar matching
+
+### Archivos
+
+```
+/backend/app/modules/alerts/service.py
+/backend/app/modules/notifications/service.py
+```
+
+### Qué hace
+
+* definir interfaz:
+
+  ```
+  match_news_with_alerts(news)
+  ```
+* NO implementarlo aún
+
+---
+
+### Resultado
+
+ Base limpia para Sprint 5
+
+---
+
+## Paso 4.6 — Cierra P1
+
+### Qué toca
+
+Revisión arquitectura
+
+### Qué revisa
+
+* que crawler NO tenga lógica de alerts
+* separación:
+
+  * crawler → news
+  * alerts → matching (después)
+
+---
+
+## Paso 4.7 — Cierra P6
+
+### Qué toca
+
+Integración final
+
+### Qué prueba
+
+```
+login
+crear source
+esperar crawler
+ver noticias en DB
+ver noticias en frontend
+```
+
+---
+
+## Resultado Sprint 4
+
+```
+RSS → crawler → DB → frontend
+```
+
+---
+
+# SPRINT 5 — Notificaciones + API
+
+## Objetivo real
+
+Cerrar el **core funcional completo del sistema**
+(alerta → noticia → notificación) 
+
+---
+
+## ORDEN EXACTO
+
+---
+
+## Paso 5.1 — Empieza P4 (CRÍTICO)
+
+### Qué toca
+
+Matching engine
+
+### Archivos
+
+```
+/backend/app/modules/alerts/service.py
+/backend/app/modules/notifications/service.py
+```
+
+### Qué hace (MUY ATÓMICO)
+
+1. función:
+
+   ```
+   match_news_with_alerts(news)
+   ```
+
+2. lógica:
+
+   ```
+   for alert in user_alerts:
+       if keyword in news.title or news.content:
+           create notification
+   ```
+
+3. mejorar matching:
+
+   * lowercase
+   * múltiples keywords
+   * opcional: regex
+
+---
+
+### Resultado
+
+ Detecta coincidencias
+
+---
+
+## Paso 5.2 — Sigue P4
+
+### Qué toca
+
+Modelo Notification
+
+### Archivos
+
+```
+/backend/app/modules/notifications/models.py
+/schemas.py
+/repository.py
+/service.py
+/api.py
+```
+
+### Modelo
+
+```
+id
+user_id
+alert_id
+news_id
+title
+created_at
+read (bool)
+```
+
+---
+
+## Paso 5.3 — Sigue P6
+
+### Qué toca
+
+Migración
+
+* tabla `notifications`
+* índices:
+
+  * user_id
+  * alert_id
+
+---
+
+## Paso 5.4 — Empieza P3
+
+### Qué toca
+
+Integración crawler → matching
+
+### Archivos
+
+```
+/backend/app/modules/crawler/service.py
+```
+
+### Qué hace
+
+Después de guardar news:
+
+```
+match_news_with_alerts(news)
+```
+
+---
+
+### Resultado
+
+ Flujo automático completo
+
+---
+
+## Paso 5.5 — Empieza P5
+
+### Qué toca
+
+UI notificaciones
+
+### Archivos
+
+```
+/frontend/src/pages/NotificationsPage.jsx
+/frontend/src/api/notificationsApi.js
+```
+
+### Qué hace
+
+* listar notificaciones
+* marcar como leídas
+* mostrar:
+
+  * alerta
+  * noticia
+  * fecha
+
+---
+
+### Resultado
+
+ Usuario ve resultados del sistema
+
+---
+
+## Paso 5.6 — Sigue P1
+
+### Qué toca
+
+Revisión API REST (MUY IMPORTANTE)
+
+Según el enunciado:
+ TODO debe estar expuesto vía API 
+
+### Qué revisa
+
+* endpoints consistentes
+* auth correcta
+* naming limpio
+
+---
+
+## Paso 5.7 — Cierra P6
+
+### Qué toca
+
+Validación completa
+
+### Flujo a probar
+
+```
+login
+crear source
+crear alerta
+esperar crawler
+generar noticia
+matching automático
+ver notificación
+```
+
+---
+
+## Resultado Sprint 5
+
+```
+RSS
+→ crawler
+→ news
+→ matching
+→ notifications
+→ UI
+```
+
+Esto ya es el **producto completo funcional**
+
+---
