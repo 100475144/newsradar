@@ -1,48 +1,70 @@
-import React, { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { getHealth } from '../api/client'
+import React from 'react'
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+} from 'react-router-dom'
+import AuthLayout from '../components/layout/AuthLayout'
+import AppShell from '../components/layout/AppShell'
+import { useAuth } from '../context/AuthContext'
+import DashboardPage from '../pages/DashboardPage'
+import LoginPage from '../pages/LoginPage'
+import RegisterPage from '../pages/RegisterPage'
 
-function Home() {
-  const [status, setStatus] = useState('loading')
-  const [data, setData] = useState(null)
-  const [error, setError] = useState('')
+function SessionLoader() {
+  return (
+    <div className="session-loader">
+      <div className="session-loader__card">
+        <p className="eyebrow">NEWSRADAR</p>
+        <h1>Restoring your session</h1>
+        <p>Checking the saved token and syncing your profile.</p>
+      </div>
+    </div>
+  )
+}
 
-  useEffect(() => {
-    async function checkHealth() {
-      try {
-        const result = await getHealth()
-        setData(result)
-        setStatus('success')
-      } catch (err) {
-        setError(err.message)
-        setStatus('error')
-      }
-    }
+function ProtectedRoute() {
+  const { isAuthenticated, isBootstrapping } = useAuth()
 
-    checkHealth()
-  }, [])
+  if (isBootstrapping) {
+    return <SessionLoader />
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+
+  return <Outlet />
+}
+
+function PublicRoute() {
+  const { isAuthenticated, isBootstrapping } = useAuth()
+
+  if (isBootstrapping) {
+    return <SessionLoader />
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <Outlet />
+}
+
+function RootRedirect() {
+  const { isAuthenticated, isBootstrapping } = useAuth()
+
+  if (isBootstrapping) {
+    return <SessionLoader />
+  }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>NEWSRADAR</h1>
-      <h2>Estado del backend</h2>
-
-      {status === 'loading' && <p>Cargando...</p>}
-
-      {status === 'success' && (
-        <>
-          <p style={{ color: 'green' }}>Backend OK</p>
-          <pre>{JSON.stringify(data, null, 2)}</pre>
-        </>
-      )}
-
-      {status === 'error' && (
-        <>
-          <p style={{ color: 'red' }}>Error de conexión</p>
-          <p>{error}</p>
-        </>
-      )}
-    </div>
+    <Navigate
+      to={isAuthenticated ? '/dashboard' : '/login'}
+      replace
+    />
   )
 }
 
@@ -50,7 +72,22 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<RootRedirect />} />
+
+        <Route element={<PublicRoute />}>
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppShell />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )
