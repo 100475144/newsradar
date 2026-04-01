@@ -20,8 +20,8 @@ class UserRepository:
     def create(self, user_data: UserCreate, hashed_password: str) -> User:
         user = User(
             email=user_data.email.strip().lower(),
-            name=user_data.name.strip(),
-            surname=user_data.surname.strip(),
+            first_name=user_data.first_name.strip(),
+            last_name=user_data.last_name.strip(),
             organization=user_data.organization.strip() if user_data.organization else None,
             hashed_password=hashed_password,
         )
