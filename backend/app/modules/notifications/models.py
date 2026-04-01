@@ -3,7 +3,7 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
-from backend.app.core.database import Base
+from app.core.database import Base
 
 
 class Notification(Base):

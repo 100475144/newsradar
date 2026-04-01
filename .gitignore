@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+.python-version
 
 # Virtual environments
 .venv/
@@ -29,3 +30,4 @@ Thumbs.db
 
 # vscode 
 .vscode/settings.json
+
