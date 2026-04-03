@@ -10,7 +10,7 @@ from app.modules.auth.repository import UserRepository
 from app.modules.auth.service import AuthService
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
 def get_db() -> Generator[Session, None, None]:
