@@ -2,7 +2,7 @@
 | Sprint       | Objetivo                       | Estado      |
 | ------------ | ------------------------------ |-------------|
 | Sprint 0     | Preparación de infraestructura | [completed] |
-| Sprint 1     | Usuarios y autenticación       |             |
+| Sprint 1     | Usuarios y autenticación       | [completed] |
 | Sprint 2     | Gestión de fuentes RSS         |             |
 | Sprint 3     | Gestión de alertas             |             |
 | Sprint 4     | Monitorización de noticias     |             |
