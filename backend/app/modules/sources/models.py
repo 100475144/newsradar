@@ -1,23 +1,25 @@
-"""Sources models for Sprint 1 auth preparation."""
+"""Sources models for Sprint 2 CRUD."""
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 from app.core.database import Base
 
 
 class Source(Base):
-	"""Minimal source entity prepared for user ownership.
-
-	Sprint 1 scope: only define ownership relationship with users.
-	"""
+	"""RSS source owned by a user."""
 
 	__tablename__ = "sources"
+	__table_args__ = (UniqueConstraint("url", "created_by", name="uq_sources_url_created_by"),)
 
 	id = Column(Integer, primary_key=True, index=True)
 	name = Column(String, nullable=False)
-	url = Column(String, nullable=False)
+	url = Column(String, nullable=False, index=True)
 	is_active = Column(Boolean, default=True, nullable=False)
 
 	created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 	owner = relationship("User")
+
+	created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+	updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
