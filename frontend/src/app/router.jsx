@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext'
 import DashboardPage from '../pages/DashboardPage'
 import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
+import SourcesPage from '../pages/SourcesPage'
 
 function SessionLoader() {
   return (
@@ -84,6 +85,7 @@ export default function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/sources" element={<SourcesPage />} />
           </Route>
         </Route>
 
