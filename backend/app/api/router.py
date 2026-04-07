@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.api.endpoints import health
 from app.modules.auth.api import router as auth_router
+from app.modules.sources.api import router as sources_router
 
 from .deps import get_db
 
@@ -12,6 +13,7 @@ api_router = APIRouter()
 
 api_router.include_router(health.router)
 api_router.include_router(auth_router)
+api_router.include_router(sources_router)
 
 
 @api_router.get("/health/db", tags=["system"])
