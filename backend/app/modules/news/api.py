@@ -1,1 +1,48 @@
 """API del módulo news: se definirán los endpoints REST para consultar y gestionar noticias."""
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user, get_db
+from app.modules.auth.models import User
+
+from .repository import NewsRepository
+from .schemas import NewsListResponse, NewsResponse
+from .service import NewsService
+
+router = APIRouter(prefix="/news", tags=["news"])
+
+
+def get_news_service(db: Session = Depends(get_db)) -> NewsService:
+    repository = NewsRepository(db)
+    return NewsService(repository)
+
+
+@router.get("", response_model=NewsListResponse)
+def list_news(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    source_id: int | None = Query(default=None),
+    category: str | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    service: NewsService = Depends(get_news_service),
+):
+    result = service.list_news(
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit,
+        source_id=source_id,
+        category=category,
+    )
+    return NewsListResponse(items=result["items"], total=result["total"])
+
+
+@router.get("/{news_id}", response_model=NewsResponse)
+def get_news(
+    news_id: int,
+    current_user: User = Depends(get_current_user),
+    service: NewsService = Depends(get_news_service),
+):
+    news = service.get_news(news_id, current_user.id)
+    if not news:
+        raise HTTPException(status_code=404, detail="News not found")
+    return news
