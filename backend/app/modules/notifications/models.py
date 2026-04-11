@@ -7,17 +7,13 @@ from app.core.database import Base
 
 
 class Notification(Base):
-    """Minimal notification entity prepared for user ownership.
-
-    Sprint 1 scope: only define ownership relationship with users.
-    """
-
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
+    title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
-    is_read = Column(Boolean, default=False, nullable=False)
+    is_read = Column(Boolean, nullable=False, default=False)
 
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     owner = relationship("User")
+    
