@@ -11,16 +11,17 @@ class NotificationBase(BaseModel):
 
 
 class NotificationCreate(NotificationBase):
-    """Creation contract kept minimal until later sprints."""
-
-
-class NotificationResponse(NotificationBase):
-    id: int
-    is_read: bool = False
-    created_by: int
-
-    model_config = ConfigDict(from_attributes=True)
+    pass
 
 
 class NotificationUpdate(BaseModel):
     is_read: Optional[bool] = None
+
+
+class NotificationResponse(NotificationBase):
+    id: int
+    is_read: bool
+    created_by: int
+
+    model_config = ConfigDict(from_attributes=True)
+    

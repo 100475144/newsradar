@@ -1,22 +1,24 @@
 """Modelos del módulo alerts: se definirán las entidades/tablas ORM relacionadas con alertas de usuario."""
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
 
 class Alert(Base):
-    """Minimal alert entity prepared for user ownership.
-
-    Sprint 1 scope: only define ownership relationship with users.
-    """
-
     __tablename__ = "alerts"
 
     id = Column(Integer, primary_key=True, index=True)
-    keyword = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    keyword = Column(String(255), nullable=False)
+    expanded_keywords = Column(JSONB, nullable=False, default=list)
+    category = Column(String(255), nullable=False)
+
+    is_active = Column(Boolean, nullable=False, default=True)
+    notify_in_app = Column(Boolean, nullable=False, default=True)
+    notify_email = Column(Boolean, nullable=False, default=False)
 
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     owner = relationship("User")

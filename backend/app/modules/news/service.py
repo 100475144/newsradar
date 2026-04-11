@@ -5,6 +5,7 @@ from urllib.parse import urlsplit, urlunsplit
 from .models import News
 from .repository import NewsRepository
 from .schemas import NewsCreateInternal
+from app.modules.alerts.matching import process_alerts_for_news
 
 
 class NewsService:
@@ -74,8 +75,11 @@ class NewsService:
             external_id=payload.external_id,
             content_hash=content_hash,
         )
-        return self.repository.create(news)
-
+        
+        created_news = self.repository.create(news)
+        process_alerts_for_news(self.repository.db, created_news)
+        return created_news
+        
     @staticmethod
     def _normalize_link(link: str) -> str:
         parts = urlsplit(link.strip())
