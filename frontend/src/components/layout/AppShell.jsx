@@ -35,6 +35,14 @@ export default function AppShell() {
           >
             Sources
           </NavLink>
+          <NavLink
+            to="/alerts"
+            className={({ isActive }) =>
+              isActive ? 'nav-link nav-link--active' : 'nav-link'
+            }
+          >
+            Alerts
+          </NavLink>
         </nav>
 
         <div className="profile-card">
