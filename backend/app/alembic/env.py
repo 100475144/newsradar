@@ -32,6 +32,7 @@ from app.modules.auth.models import User
 from app.modules.sources.models import Source
 from app.modules.alerts.models import Alert
 from app.modules.notifications.models import Notification
+from app.modules.news.models import News
 ######################
 
 # this is the Alembic Config object, which provides

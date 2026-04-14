@@ -16,7 +16,7 @@ class News(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source_id: Mapped[int | None] = mapped_column(
         Integer,
-        ForeignKey("sources.id"),
+        ForeignKey("sources.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )

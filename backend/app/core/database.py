@@ -13,7 +13,7 @@ if db_url is None:
 # Engine es el objeto que gestiona la conexión con la base de datos 
 engine = create_engine(
     url=db_url, 
-    echo=True,   # Mostrar queries en consola, en producción -> False
+    echo=False,   # Mostrar queries en consola, en producción -> False
     pool_size=10,
     max_overflow=20,
     pool_timeout=30,
