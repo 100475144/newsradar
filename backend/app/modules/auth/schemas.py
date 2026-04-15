@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 class UserRole(str, Enum):
     ADMIN = "admin"
-    MANAGER = "manager"
-    READER = "reader"
+    GESTOR = "gestor"
+    LECTOR = "lector"
 
 
 class UserBase(BaseModel):
@@ -85,7 +85,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: int
-    role: UserRole = UserRole.READER
+    role: UserRole = UserRole.LECTOR
     is_active: bool = True
     is_verified: bool = False
     created_at: Optional[datetime] = None

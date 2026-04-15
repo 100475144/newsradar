@@ -1,4 +1,6 @@
 from functools import lru_cache
+from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -18,6 +20,22 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(default=60)
 
     frontend_url: str = Field(default="http://localhost:5173")
+
+    # SMTP / Email
+    smtp_host: Optional[str] = Field(default=None)
+    smtp_port: int = Field(default=587)
+    smtp_username: Optional[str] = Field(default=None)
+    smtp_password: Optional[str] = Field(default=None)
+    smtp_sender: Optional[str] = Field(default=None)
+
+    # Email verification
+    verification_token_expire_hours: int = Field(default=24)
+
+    # Admin seed
+    admin_email: str = Field(default="admin@newsradar.com")
+    admin_password: str = Field(default="Admin1234!")
+    admin_first_name: str = Field(default="Admin")
+    admin_last_name: str = Field(default="NewsRadar")
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -1,3 +1,6 @@
+import logging
+from datetime import datetime, timezone
+
 from app.core.security import (
     create_access_token,
     get_password_hash,
@@ -5,6 +8,9 @@ from app.core.security import (
 )
 from app.modules.auth.repository import UserRepository
 from app.modules.auth.schemas import LoginResponse, UserCreate
+from app.modules.notifications.email_utils import send_verification_email
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -18,6 +24,49 @@ class AuthService:
 
         hashed_password = get_password_hash(user_data.password)
         user = self.repository.create(user_data, hashed_password)
+
+        # Generate verification token and send email
+        token_obj = self.repository.create_verification_token(user.id)
+        email_sent = send_verification_email(user.email, token_obj.token)
+        if not email_sent:
+            logger.warning(
+                "Verification email could not be sent to %s (SMTP may not be configured).",
+                user.email,
+            )
+
+        return user
+
+    def verify_email(self, token: str):
+        token_obj = self.repository.get_verification_token(token)
+        if token_obj is None:
+            raise ValueError("Invalid verification token.")
+
+        if token_obj.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            self.repository.delete_verification_token(token_obj)
+            raise ValueError("Verification token has expired. Please request a new one.")
+
+        user = self.repository.get_by_id(token_obj.user_id)
+        if user is None:
+            raise ValueError("User not found.")
+
+        self.repository.update(user, is_verified=True)
+        self.repository.delete_verification_token(token_obj)
+        return user
+
+    def resend_verification_email(self, email: str):
+        user = self.repository.get_by_email(email)
+        if user is None:
+            raise ValueError("User not found.")
+        if user.is_verified:
+            raise ValueError("Email is already verified.")
+
+        token_obj = self.repository.create_verification_token(user.id)
+        email_sent = send_verification_email(user.email, token_obj.token)
+        if not email_sent:
+            logger.warning(
+                "Verification email could not be sent to %s (SMTP may not be configured).",
+                user.email,
+            )
         return user
 
     def validate_user_credentials(self, email: str, password: str):

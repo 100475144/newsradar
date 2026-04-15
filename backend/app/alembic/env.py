@@ -28,7 +28,7 @@ from alembic import context
 # they are needed to load for alembic to 
 # detect changes in all the database tables
 from app.core.database import Base
-from app.modules.auth.models import User
+from app.modules.auth.models import User, EmailVerificationToken
 from app.modules.sources.models import Source
 from app.modules.alerts.models import Alert
 from app.modules.notifications.models import Notification

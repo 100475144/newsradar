@@ -1,8 +1,11 @@
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.modules.auth.models import User
+from app.core.config import settings
+from app.modules.auth.models import EmailVerificationToken, User
 from app.modules.auth.schemas import UserCreate
 
 
@@ -38,3 +41,37 @@ class UserRepository:
         self.db.commit()
         self.db.refresh(user)
         return user
+
+    def list_all(self) -> list[User]:
+        return self.db.query(User).order_by(User.id).all()
+
+    # ── Email verification tokens ────────────────────────────────────
+
+    def create_verification_token(self, user_id: int) -> EmailVerificationToken:
+        # Invalidate any existing tokens for this user
+        self.db.query(EmailVerificationToken).filter(
+            EmailVerificationToken.user_id == user_id
+        ).delete()
+
+        token = EmailVerificationToken(
+            user_id=user_id,
+            token=secrets.token_urlsafe(48),
+            expires_at=datetime.now(timezone.utc) + timedelta(
+                hours=settings.verification_token_expire_hours
+            ),
+        )
+        self.db.add(token)
+        self.db.commit()
+        self.db.refresh(token)
+        return token
+
+    def get_verification_token(self, token: str) -> Optional[EmailVerificationToken]:
+        return (
+            self.db.query(EmailVerificationToken)
+            .filter(EmailVerificationToken.token == token)
+            .first()
+        )
+
+    def delete_verification_token(self, token_obj: EmailVerificationToken) -> None:
+        self.db.delete(token_obj)
+        self.db.commit()
