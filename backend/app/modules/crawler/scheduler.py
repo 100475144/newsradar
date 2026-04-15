@@ -1,8 +1,11 @@
-import asyncio
+"""Crawler scheduler basado en expresiones cron via APScheduler."""
+
 import logging
 import os
 from collections.abc import Callable
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,63 +19,56 @@ logger = logging.getLogger(__name__)
 
 
 class CrawlerScheduler:
+    """Ejecuta el ciclo de crawling según una expresión cron configurable."""
+
     def __init__(
         self,
         db_factory: Callable[[], Session],
-        interval_seconds: int = 300,
+        cron_expression: str = "*/5 * * * *",
         run_on_startup: bool = True,
     ):
         self.db_factory = db_factory
-        self.interval_seconds = interval_seconds
+        self.cron_expression = cron_expression
         self.run_on_startup = run_on_startup
-        self._task: asyncio.Task | None = None
-        self._stop_event = asyncio.Event()
+        self._scheduler = AsyncIOScheduler()
 
     def start(self) -> None:
-        if self._task and not self._task.done():
-            logger.info("Crawler scheduler already running")
-            return
+        trigger = CronTrigger.from_crontab(self.cron_expression)
 
-        logger.info(
-            "Starting crawler scheduler with interval=%s seconds",
-            self.interval_seconds,
+        self._scheduler.add_job(
+            self._run_cycle_async,
+            trigger=trigger,
+            id="crawler_cycle",
+            name="RSS Crawler Cycle",
+            replace_existing=True,
         )
-        self._stop_event = asyncio.Event()
-        self._task = asyncio.create_task(self._run_loop())
+
+        self._scheduler.start()
+        logger.info(
+            "Crawler scheduler started with cron expression: %s",
+            self.cron_expression,
+        )
+
+        if self.run_on_startup:
+            # Run first cycle immediately
+            self._scheduler.add_job(
+                self._run_cycle_async,
+                id="crawler_startup",
+                name="RSS Crawler Startup",
+            )
 
     async def stop(self) -> None:
-        if not self._task:
-            return
-
-        logger.info("Stopping crawler scheduler")
-        self._stop_event.set()
-
-        try:
-            await self._task
-        except asyncio.CancelledError:
-            logger.info("Crawler scheduler task cancelled")
-        finally:
-            self._task = None
+        if self._scheduler.running:
+            self._scheduler.shutdown(wait=False)
+            logger.info("Crawler scheduler stopped")
 
     async def trigger_once(self) -> None:
+        await self._run_cycle_async()
+
+    async def _run_cycle_async(self) -> None:
+        """Wrapper async que ejecuta el ciclo síncrono en un thread."""
+        import asyncio
         await asyncio.to_thread(self._run_cycle)
-
-    async def _run_loop(self) -> None:
-        try:
-            if self.run_on_startup:
-                await asyncio.to_thread(self._run_cycle)
-
-            while not self._stop_event.is_set():
-                try:
-                    await asyncio.wait_for(
-                        self._stop_event.wait(),
-                        timeout=self.interval_seconds,
-                    )
-                except asyncio.TimeoutError:
-                    await asyncio.to_thread(self._run_cycle)
-
-        except Exception:
-            logger.exception("Unexpected error in crawler scheduler loop")
 
     def _run_cycle(self) -> None:
         logger.info("Crawler scheduler cycle started")
@@ -130,10 +126,6 @@ class CrawlerScheduler:
         return list(db.execute(stmt).scalars().all())
 
 
-def get_crawler_interval_seconds() -> int:
-    raw = os.getenv("CRAWLER_INTERVAL_SECONDS", "300")
-    try:
-        value = int(raw)
-        return max(30, value)
-    except ValueError:
-        return 300
+def get_crawler_cron_expression() -> str:
+    """Read the cron expression from env or default to every 5 minutes."""
+    return os.getenv("CRAWLER_CRON_EXPRESSION", "*/5 * * * *")

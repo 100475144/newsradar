@@ -1,4 +1,4 @@
-"""Repositorio del módulo alerts: acceso a datos de alertas: irá el acceso a datos de alertas (consultas, inserciones, actualización y borrado)."""
+"""Repositorio del módulo alerts: acceso a datos de alertas."""
 
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ class AlertRepository:
         keyword: str,
         expanded_keywords: list[str],
         category: str,
+        source_ids: list[int],
         notify_in_app: bool,
         notify_email: bool,
         created_by: int,
@@ -28,6 +29,7 @@ class AlertRepository:
             keyword=keyword,
             expanded_keywords=expanded_keywords,
             category=category,
+            source_ids=source_ids,
             notify_in_app=notify_in_app,
             notify_email=notify_email,
             created_by=created_by,

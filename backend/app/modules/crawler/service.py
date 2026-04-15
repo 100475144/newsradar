@@ -26,6 +26,7 @@ class CrawlerService:
                 id=source.id,
                 name=source.name,
                 url=source.url,
+                category=getattr(source, "category", None),
                 is_active=source.is_active,
             )
             for source in active_sources

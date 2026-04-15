@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_role
+from app.core.iptc import IPTC_CATEGORIES
 from app.modules.alerts.recommender import suggest_expanded_keywords
 from app.modules.alerts.repository import AlertRepository
 from app.modules.alerts.schemas import AlertCreate, AlertResponse, AlertUpdate
@@ -35,6 +36,15 @@ def list_alerts(
     service: AlertService = Depends(get_alert_service),
 ):
     return service.list_alerts(current_user.id)
+
+
+@router.get("/categories")
+def list_iptc_categories():
+    """Return all valid IPTC Media Topics first-level categories."""
+    return [
+        {"code": code, "label": label}
+        for code, label in IPTC_CATEGORIES.items()
+    ]
 
 
 @router.get("/suggestions/{keyword}")
@@ -102,4 +112,3 @@ def deactivate_alert(
     service: AlertService = Depends(get_alert_service),
 ):
     return service.deactivate_alert(alert_id, current_user.id)
-    

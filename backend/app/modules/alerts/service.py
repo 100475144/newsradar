@@ -1,4 +1,4 @@
-"""Servicio del módulo alerts: se implementará la lógica de negocio relacionada con alertas y reglas de coincidencia."""
+"""Servicio del módulo alerts: lógica de negocio relacionada con alertas y reglas de coincidencia."""
 
 from fastapi import HTTPException, status
 
@@ -24,6 +24,7 @@ class AlertService:
             keyword=data.keyword.strip(),
             expanded_keywords=data.expanded_keywords,
             category=data.category.strip(),
+            source_ids=data.source_ids,
             notify_in_app=data.notify_in_app,
             notify_email=data.notify_email,
             created_by=user_id,
@@ -49,6 +50,7 @@ class AlertService:
             "keyword": data.keyword.strip() if data.keyword is not None else None,
             "category": data.category.strip() if data.category is not None else None,
             "expanded_keywords": data.expanded_keywords,
+            "source_ids": data.source_ids,
             "is_active": data.is_active,
             "notify_in_app": data.notify_in_app,
             "notify_email": data.notify_email,
@@ -67,4 +69,3 @@ class AlertService:
     def deactivate_alert(self, alert_id: int, user_id: int):
         alert = self.get_alert(alert_id, user_id)
         return self.repository.update(alert, is_active=False)
-        

@@ -39,6 +39,7 @@ class SourceRepository:
 		source = Source(
 			name=source_data.name.strip(),
 			url=str(source_data.url),
+			category=source_data.category,
 			created_by=owner_id,
 		)
 		self.db.add(source)

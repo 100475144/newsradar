@@ -43,6 +43,22 @@ export default function AppShell() {
           >
             Alerts
           </NavLink>
+          <NavLink
+            to="/news"
+            className={({ isActive }) =>
+              isActive ? 'nav-link nav-link--active' : 'nav-link'
+            }
+          >
+            News
+          </NavLink>
+          <NavLink
+            to="/notifications"
+            className={({ isActive }) =>
+              isActive ? 'nav-link nav-link--active' : 'nav-link'
+            }
+          >
+            Notifications
+          </NavLink>
         </nav>
 
         <div className="profile-card">
@@ -50,6 +66,9 @@ export default function AppShell() {
           <strong>{buildFullName(user) || user?.email}</strong>
           <span>{user?.email}</span>
           <span>{user?.organization || 'No organization assigned yet'}</span>
+          <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'rgba(237,246,255,0.6)', marginTop: '0.25rem' }}>
+            Role: {user?.role}
+          </span>
         </div>
       </aside>
 

@@ -9,10 +9,12 @@ from app.core.config import settings
 from app.core.database import session_newsradar
 from app.core.logging_config import configure_logging
 from app.core.security import get_password_hash
+from app.core.seed_sources import get_seed_sources
 from app.modules.auth.models import User
+from app.modules.sources.models import Source
 from app.modules.crawler.scheduler import (
     CrawlerScheduler,
-    get_crawler_interval_seconds,
+    get_crawler_cron_expression,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,15 +45,48 @@ def _seed_admin_user() -> None:
         db.close()
 
 
+def _seed_rss_sources() -> None:
+    """Seed 100+ RSS channels across 10+ media outlets if none exist for admin."""
+    db = session_newsradar()
+    try:
+        admin = db.query(User).filter(User.email == settings.admin_email).first()
+        if not admin:
+            return
+
+        existing_count = db.query(Source).filter(Source.created_by == admin.id).count()
+        if existing_count > 0:
+            return
+
+        seeds = get_seed_sources()
+        for name, url, category in seeds:
+            source = Source(
+                name=name,
+                url=url,
+                category=category,
+                is_active=True,
+                created_by=admin.id,
+            )
+            db.add(source)
+
+        db.commit()
+        logger.info("Seeded %d RSS sources for admin user", len(seeds))
+    except Exception:
+        logger.exception("Failed to seed RSS sources")
+        db.rollback()
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
 
     _seed_admin_user()
+    _seed_rss_sources()
 
     scheduler = CrawlerScheduler(
         db_factory=session_newsradar,
-        interval_seconds=get_crawler_interval_seconds(),
+        cron_expression=get_crawler_cron_expression(),
         run_on_startup=True,
     )
     app.state.crawler_scheduler = scheduler

@@ -14,6 +14,8 @@ import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
 import SourcesPage from '../pages/SourcesPage'
 import AlertsPage from '../pages/AlertsPage'
+import NewsPage from '../pages/NewsPage'
+import NotificationsPage from '../pages/NotificationsPage'
 
 function SessionLoader() {
   return (
@@ -88,6 +90,8 @@ export default function AppRouter() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/sources" element={<SourcesPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/news" element={<NewsPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
           </Route>
         </Route>
 

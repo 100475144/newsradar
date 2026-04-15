@@ -1,12 +1,17 @@
-"""Emparejamiento entre alertas y noticias."""
+"""Emparejamiento entre alertas y noticias.
 
-from datetime import datetime
+Mejoras:
+- Respeta source_ids: si la alerta tiene fuentes específicas, solo matchea noticias de esas fuentes.
+- Clasifica la noticia con la categoría IPTC de la alerta si hay match.
+"""
+
+from datetime import datetime, timezone
 
 from app.modules.alerts.models import Alert
 from app.modules.alerts.repository import AlertRepository
+from app.modules.auth.models import User
 from app.modules.notifications.email_utils import send_email_notification
 from app.modules.notifications.repository import NotificationRepository
-from app.modules.auth.models import User
 
 
 def _build_news_text(news) -> str:
@@ -34,13 +39,20 @@ def _build_terms(alert: Alert) -> list[str]:
     return cleaned
 
 
-def _matches(alert: Alert, news_text: str) -> bool:
+def _matches(alert: Alert, news, news_text: str) -> bool:
+    # Check source_ids filter: if alert specifies sources, only match those
+    alert_source_ids = alert.source_ids or []
+    if alert_source_ids:
+        news_source_id = getattr(news, "source_id", None)
+        if news_source_id not in alert_source_ids:
+            return False
+
     terms = _build_terms(alert)
     return any(term in news_text for term in terms)
 
 
 def _build_notification_title(alert: Alert) -> str:
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    now = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
     return f"Actualización de {alert.name} en {now}"
 
 
@@ -75,8 +87,15 @@ def process_alerts_for_news(db, news) -> int:
     created = 0
 
     for alert in alerts:
-        if not _matches(alert, news_text):
+        if not _matches(alert, news, news_text):
             continue
+
+        # Classify news with alert's IPTC category if news has no category
+        if not getattr(news, "category", None) and alert.category:
+            news.category = alert.category
+            db.add(news)
+            db.commit()
+            db.refresh(news)
 
         title = _build_notification_title(alert)
         message = _build_notification_message(alert, news)
@@ -100,4 +119,3 @@ def process_alerts_for_news(db, news) -> int:
         created += 1
 
     return created
-    

@@ -16,6 +16,7 @@ class Source(Base):
 	id = Column(Integer, primary_key=True, index=True)
 	name = Column(String, nullable=False)
 	url = Column(String, nullable=False, index=True)
+	category = Column(String(255), nullable=True, index=True)
 	is_active = Column(Boolean, default=True, nullable=False)
 
 	created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)

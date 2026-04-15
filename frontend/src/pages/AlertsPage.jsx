@@ -7,25 +7,15 @@ import {
   getAlerts,
   updateAlert,
 } from '../api/alertsApi'
-
-const CATEGORIES = [
-  { value: 'technology', label: 'Technology' },
-  { value: 'politics', label: 'Politics' },
-  { value: 'business', label: 'Business' },
-  { value: 'science', label: 'Science' },
-  { value: 'health', label: 'Health' },
-  { value: 'sports', label: 'Sports' },
-  { value: 'entertainment', label: 'Entertainment' },
-  { value: 'world', label: 'World' },
-  { value: 'environment', label: 'Environment' },
-  { value: 'economy', label: 'Economy' },
-]
+import { getSources } from '../api/sourcesApi'
+import { request } from '../api/client'
 
 const INITIAL_FORM = {
   name: '',
   keyword: '',
   category: '',
   expanded_keywords: '',
+  source_ids: [],
   notify_in_app: true,
   notify_email: false,
 }
@@ -60,12 +50,13 @@ function parseExpandedKeywords(raw) {
     .filter(Boolean)
 }
 
-function AlertForm({ initial, onSave, onCancel, isSubmitting, error }) {
+function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories, sources }) {
   const [formData, setFormData] = useState(
     initial
       ? {
           ...initial,
           expanded_keywords: (initial.expanded_keywords || []).join(', '),
+          source_ids: initial.source_ids || [],
         }
       : INITIAL_FORM,
   )
@@ -76,6 +67,15 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error }) {
       ...current,
       [name]: type === 'checkbox' ? checked : value,
     }))
+  }
+
+  const handleSourceToggle = (sourceId) => {
+    setFormData((current) => {
+      const ids = current.source_ids.includes(sourceId)
+        ? current.source_ids.filter((id) => id !== sourceId)
+        : [...current.source_ids, sourceId]
+      return { ...current, source_ids: ids }
+    })
   }
 
   const handleSubmit = (event) => {
@@ -113,23 +113,23 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error }) {
           />
         </label>
         <label className="field">
-          <span>Category</span>
+          <span>IPTC Category</span>
           <select
             name="category"
             value={formData.category}
             onChange={handleChange}
             required
           >
-            <option value="" disabled>Select a category…</option>
-            {CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value}>
+            <option value="" disabled>Select a category...</option>
+            {categories.map((cat) => (
+              <option key={cat.code} value={cat.code}>
                 {cat.label}
               </option>
             ))}
           </select>
         </label>
         <label className="field">
-          <span>Related keywords (comma-separated, 3–10 if provided)</span>
+          <span>Related keywords (comma-separated, 3-10 if provided)</span>
           <input
             type="text"
             name="expanded_keywords"
@@ -139,6 +139,30 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error }) {
           />
         </label>
       </div>
+
+      {sources.length > 0 ? (
+        <div style={{ marginTop: '0.5rem' }}>
+          <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>
+            Monitor specific sources (leave empty for all):
+          </span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+            {sources.map((src) => (
+              <label
+                key={src.id}
+                className="field field--inline"
+                style={{ background: formData.source_ids.includes(src.id) ? 'var(--ok-soft)' : 'transparent', padding: '0.35rem 0.6rem', borderRadius: '10px', cursor: 'pointer' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.source_ids.includes(src.id)}
+                  onChange={() => handleSourceToggle(src.id)}
+                />
+                <span style={{ fontSize: '0.85rem' }}>{src.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="source-form__actions" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
         <label className="field field--inline">
@@ -188,6 +212,13 @@ function AlertRow({ alert, onEdit, onDelete, onToggle, busy }) {
             Related: {alert.expanded_keywords.join(', ')}
           </span>
         ) : null}
+        {alert.source_ids && alert.source_ids.length > 0 ? (
+          <span className="source-row__url">
+            Sources: {alert.source_ids.length} selected
+          </span>
+        ) : (
+          <span className="source-row__url">Sources: all</span>
+        )}
         <span className="source-row__url">
           {alert.notify_in_app ? 'In-app' : null}
           {alert.notify_in_app && alert.notify_email ? ' · ' : null}
@@ -247,12 +278,20 @@ export default function AlertsPage() {
   const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [sources, setSources] = useState([])
 
   const load = useCallback(async () => {
     dispatch({ type: 'LOADING' })
     try {
-      const items = await getAlerts()
+      const [items, cats, srcs] = await Promise.all([
+        getAlerts(),
+        request('/alerts/categories'),
+        getSources(),
+      ])
       dispatch({ type: 'LOADED', items })
+      setCategories(cats)
+      setSources(srcs)
     } catch (err) {
       dispatch({ type: 'ERROR', error: err.message })
     }
@@ -341,7 +380,7 @@ export default function AlertsPage() {
         <p className="eyebrow">Alerts</p>
         <h1>Your alerts</h1>
         <p>
-          Define keywords and categories to watch. NewsRadar will match incoming
+          Define keywords and IPTC categories to watch. NewsRadar will match incoming
           articles against your active alerts and notify you accordingly.
         </p>
       </div>
@@ -362,6 +401,8 @@ export default function AlertsPage() {
             onCancel={cancelForm}
             isSubmitting={isSubmitting}
             error={formError}
+            categories={categories}
+            sources={sources}
           />
         </div>
       ) : null}
@@ -392,6 +433,8 @@ export default function AlertsPage() {
                   onCancel={cancelForm}
                   isSubmitting={isSubmitting}
                   error={formError}
+                  categories={categories}
+                  sources={sources}
                 />
               </div>
             ) : (
