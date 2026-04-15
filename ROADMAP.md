@@ -6,7 +6,7 @@
 | Sprint 2     | Gestión de fuentes RSS         | [completed] |
 | Sprint 3     | Gestión de alertas             | [ongoing]   |
 | Sprint 4     | Monitorización de noticias     | [ongoing]   |
-| Sprint 5     | Notificaciones + API REST      |             |
+| Sprint 5     | Notificaciones + API REST      | [ongoing]   |
 | Sprint 6     | Dashboard y visualización      |             |
 | Sprint 7     | Testing, CI/CD, calidad        |             |
 | Sprint 8     | Documentación                  |             |
