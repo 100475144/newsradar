@@ -8,13 +8,14 @@ from app.modules.alerts.recommender import suggest_expanded_keywords
 from app.modules.alerts.repository import AlertRepository
 from app.modules.alerts.schemas import AlertCreate, AlertResponse, AlertUpdate
 from app.modules.alerts.service import AlertService
+from app.modules.sources.repository import SourceRepository
 
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 
 def get_alert_service(db: Session = Depends(get_db)) -> AlertService:
-    return AlertService(AlertRepository(db))
+    return AlertService(AlertRepository(db), SourceRepository(db))
 
 
 @router.get("/", response_model=list[AlertResponse])

@@ -21,6 +21,7 @@ class AlertRepository:
         category: str,
         notify_in_app: bool,
         notify_email: bool,
+        source_id: int | None,
         created_by: int,
     ) -> Alert:
         alert = Alert(
@@ -30,6 +31,7 @@ class AlertRepository:
             category=category,
             notify_in_app=notify_in_app,
             notify_email=notify_email,
+            source_id=source_id,
             created_by=created_by,
             is_active=True,
         )

@@ -11,6 +11,7 @@ class AlertBase(BaseModel):
     expanded_keywords: List[str] = Field(default_factory=list, max_length=10)
     notify_in_app: bool = True
     notify_email: bool = False
+    source_id: Optional[int] = None
 
     @field_validator("expanded_keywords")
     @classmethod
@@ -45,6 +46,7 @@ class AlertUpdate(BaseModel):
     is_active: Optional[bool] = None
     notify_in_app: Optional[bool] = None
     notify_email: Optional[bool] = None
+    source_id: Optional[int] = None
 
     @field_validator("expanded_keywords")
     @classmethod
@@ -80,6 +82,6 @@ class AlertResponse(BaseModel):
     notify_in_app: bool
     notify_email: bool
     created_by: int
+    source_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
-    
