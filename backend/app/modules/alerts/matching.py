@@ -39,6 +39,14 @@ def _matches(alert: Alert, news_text: str) -> bool:
     return any(term in news_text for term in terms)
 
 
+def _matches_source(alert: Alert, news) -> bool:
+    if alert.source_id is None:
+        return True
+
+    news_source_id = getattr(news, "source_id", None)
+    return news_source_id == alert.source_id
+
+
 def _build_notification_title(alert: Alert) -> str:
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     return f"Actualización de {alert.name} en {now}"
@@ -75,6 +83,9 @@ def process_alerts_for_news(db, news) -> int:
     created = 0
 
     for alert in alerts:
+        if not _matches_source(alert, news):
+            continue
+
         if not _matches(alert, news_text):
             continue
 

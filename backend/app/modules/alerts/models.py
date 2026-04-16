@@ -1,4 +1,4 @@
-"""Modelos del módulo alerts: se definirán las entidades/tablas ORM relacionadas con alertas de usuario."""
+"""Modelos del módulo alerts: entidades ORM para alertas de usuario."""
 
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
@@ -22,3 +22,6 @@ class Alert(Base):
 
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     owner = relationship("User")
+
+    source_id = Column(Integer, ForeignKey("sources.id"), nullable=True, index=True)
+    source = relationship("Source")
