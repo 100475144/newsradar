@@ -1,0 +1,28 @@
+services:
+  api_test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: sh -c "cd /code/app && alembic upgrade head && cd /code && pytest"
+    environment:
+      - DATABASE_URL=postgresql+psycopg://test_user:test_password@db_test:5432/test_db
+    depends_on:
+      db_test:
+        condition: service_healthy
+    volumes:
+      - ./backend:/code
+
+  db_test:
+    image: postgres:18.3-trixie
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 5s
+      retries: 5
+
+  
