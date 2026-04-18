@@ -14,3 +14,4 @@ alembic==1.18.4
 python-dotenv==1.2.2
 feedparser
 apscheduler>=3.10,<4
+APScheduler==3.10.4
