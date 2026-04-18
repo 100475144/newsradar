@@ -40,6 +40,7 @@ class CrawlerService:
 
     def crawl_source(self, source: SourceStub) -> CrawlResult:
         feed = feedparser.parse(source.url)
+        feed_language = self._extract_feed_language(feed)
 
         fetched_items = 0
         stored_items = 0
@@ -48,7 +49,7 @@ class CrawlerService:
         for entry in feed.entries:
             fetched_items += 1
 
-            item = self._parse_entry(entry, source)
+            item = self._parse_entry(entry, source, feed_language)
             payload = NewsCreateInternal(
                 source_id=source.id,
                 title=item.title,
@@ -56,6 +57,7 @@ class CrawlerService:
                 summary=item.summary,
                 published_at=item.published_at,
                 category=item.category or source.category,
+                language=item.language,
                 author=item.author,
                 external_id=item.external_id,
             )
@@ -77,7 +79,7 @@ class CrawlerService:
             duplicates_skipped=duplicates_skipped,
         )
 
-    def _parse_entry(self, entry, source: SourceStub) -> ParsedFeedItem:
+    def _parse_entry(self, entry, source: SourceStub, feed_language: str | None = None) -> ParsedFeedItem:
         published_at = None
         if getattr(entry, "published_parsed", None):
             published_at = datetime(*entry.published_parsed[:6])
@@ -90,6 +92,7 @@ class CrawlerService:
             author=getattr(entry, "author", None),
             external_id=getattr(entry, "id", None),
             category=self._extract_category(entry) or source.category,
+            language=self._extract_entry_language(entry) or feed_language,
         )
 
     @staticmethod
@@ -100,3 +103,29 @@ class CrawlerService:
             if term:
                 return str(term)
         return None
+    
+    @staticmethod
+    def _normalize_language(value: str | None) -> str | None:
+        if not value:
+            return None
+        value = str(value).strip().lower()
+        if not value:
+            return None
+        return value[:10]
+
+    @classmethod
+    def _extract_entry_language(cls, entry) -> str | None:
+        return cls._normalize_language(getattr(entry, "language", None))
+
+    @classmethod
+    def _extract_feed_language(cls, feed) -> str | None:
+        feed_meta = getattr(feed, "feed", None)
+        if not feed_meta:
+            return None
+
+        lang = getattr(feed_meta, "language", None)
+
+        if not lang and isinstance(feed_meta, dict):
+            lang = feed_meta.get("language") or feed_meta.get("xml:lang")
+
+        return cls._normalize_language(lang)

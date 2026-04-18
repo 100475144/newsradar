@@ -21,6 +21,7 @@ class ParsedFeedItem(BaseModel):
     author: Optional[str] = None
     external_id: Optional[str] = None
     category: Optional[str] = None
+    language: Optional[str] = None
 
 
 class CrawlResult(BaseModel):
