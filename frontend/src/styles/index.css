@@ -310,6 +310,11 @@ pre {
   color: var(--error);
 }
 
+.form-message--success {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
 .auth-card__footer {
   margin-top: 1.4rem;
   color: var(--muted);

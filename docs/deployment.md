@@ -99,6 +99,15 @@ Esto iniciará:
 - Base de datos PostgreSQL que se ejecuta en el puerto 5432, el usuario y contraseña a la base de datos están definidas en el archivo ``` docker-compose.yaml ``` por el momento al ser un **entorno de desarrollo**.
 - Contenedor Frontend que ejecuta nuestra UI en React + Vite en el puerto 5173, se ejecuta en **modo de desarrollo**.
 
+### Correo de desarrollo con MailHog
+
+En entorno local, NEWSRADAR usa `MailHog` como servidor SMTP de pruebas. Esto permite revisar correos de verificación sin enviar mensajes reales a Internet.
+
+Para revisar los correos generados por la aplicación:
+- Abrir `http://localhost:8025`
+- Registrar un usuario nuevo o reenviar un correo de verificación
+- Abrir el mensaje capturado en la bandeja de entrada de MailHog
+
 ### Manejando el entorno de desarrollo
 
 ----

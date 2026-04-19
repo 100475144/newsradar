@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     smtp_username: Optional[str] = Field(default=None)
     smtp_password: Optional[str] = Field(default=None)
     smtp_sender: Optional[str] = Field(default=None)
+    smtp_use_tls: bool = Field(default=True)
 
     # Email verification
     verification_token_expire_hours: int = Field(default=24)

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_active_verified_user, get_db
 from app.modules.auth.models import User
 from app.modules.news.repository import NewsRepository
 from app.modules.news.service import NewsService
@@ -20,7 +20,7 @@ def get_crawler_service(db: Session = Depends(get_db)) -> CrawlerService:
 
 @router.post("/run")
 def run_crawler(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_verified_user),
     service: CrawlerService = Depends(get_crawler_service),
 ):
     results = service.crawl_all_active_sources(current_user.id)

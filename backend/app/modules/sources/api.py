@@ -10,7 +10,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_role
+from app.api.deps import get_current_active_verified_user, get_db, require_role
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserRole
 from app.modules.sources.models import Source
@@ -32,7 +32,7 @@ def get_source_service(db: Session = Depends(get_db)) -> SourceService:
 
 @router.get("", response_model=List[SourceResponse], status_code=status.HTTP_200_OK)
 def list_sources(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_verified_user),
     source_service: SourceService = Depends(get_source_service),
 ) -> List[Source]:
     return source_service.list_sources(current_user.id)
@@ -41,7 +41,7 @@ def list_sources(
 @router.get("/{source_id}", response_model=SourceResponse, status_code=status.HTTP_200_OK)
 def read_source(
     source_id: int = Path(..., ge=1),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_verified_user),
     source_service: SourceService = Depends(get_source_service),
 ) -> Source:
     try:

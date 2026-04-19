@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.api.deps import get_current_user, get_db, require_role
+from app.api.deps import (
+    get_current_active_verified_user,
+    get_db,
+    require_role,
+)
 from app.modules.auth.models import User
 from app.modules.auth.repository import UserRepository
 from app.modules.auth.schemas import (
@@ -146,9 +150,9 @@ def login_for_oauth2(
     status_code=status.HTTP_200_OK,
 )
 def read_current_user(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_verified_user),
 ) -> UserResponse:
-    """Return the currently authenticated user."""
+    """Return the currently authenticated and verified user."""
     return current_user
 
 

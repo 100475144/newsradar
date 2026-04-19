@@ -7,6 +7,16 @@ export function registerUser(payload) {
   })
 }
 
+export function verifyEmail(token) {
+  return request(`/auth/verify-email?token=${encodeURIComponent(token)}`)
+}
+
+export function resendVerification(email) {
+  return request(`/auth/resend-verification?email=${encodeURIComponent(email)}`, {
+    method: 'POST',
+  })
+}
+
 export function loginUser(payload) {
   return request('/auth/login', {
     method: 'POST',

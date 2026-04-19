@@ -83,7 +83,7 @@ def require_role(*allowed_roles: UserRole):
     Dependency factory: restringe acceso a los roles indicados.
     Uso: Depends(require_role(UserRole.ADMIN, UserRole.GESTOR))
     """
-    def _check(current_user: User = Depends(get_current_user)) -> User:
+    def _check(current_user: User = Depends(get_current_active_verified_user)) -> User:
         if current_user.role not in [r.value for r in allowed_roles]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

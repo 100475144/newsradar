@@ -80,6 +80,11 @@ class AuthService:
         if hasattr(user, "is_active") and not user.is_active:
             raise ValueError("This user account is inactive.")
 
+        if hasattr(user, "is_verified") and not user.is_verified:
+            raise ValueError(
+                "Email not verified. Please verify your email before signing in."
+            )
+
         return user
 
     def login_user(self, email: str, password: str) -> LoginResponse:

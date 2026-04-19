@@ -8,7 +8,7 @@ Permisos:
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_role
+from app.api.deps import get_current_active_verified_user, get_db, require_role
 from app.core.iptc import IPTC_CATEGORIES
 from app.modules.alerts.recommender import suggest_expanded_keywords
 from app.modules.alerts.repository import AlertRepository
@@ -32,7 +32,7 @@ def get_alert_service(db: Session = Depends(get_db)) -> AlertService:
 
 @router.get("/", response_model=list[AlertResponse])
 def list_alerts(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_verified_user),
     service: AlertService = Depends(get_alert_service),
 ):
     return service.list_alerts(current_user.id)
@@ -60,7 +60,7 @@ def get_keyword_suggestions(keyword: str):
 @router.get("/{alert_id}", response_model=AlertResponse)
 def get_alert(
     alert_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_verified_user),
     service: AlertService = Depends(get_alert_service),
 ):
     return service.get_alert(alert_id, current_user.id)

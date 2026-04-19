@@ -9,16 +9,16 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
-def _get_smtp_config() -> tuple[str, int, str, str, str] | None:
+def _get_smtp_config() -> tuple[str, int, str | None, str | None, str, bool] | None:
     host = settings.smtp_host
     username = settings.smtp_username
     password = settings.smtp_password
     sender = settings.smtp_sender or username
 
-    if not host or not username or not password or not sender:
+    if not host or not sender:
         return None
 
-    return host, settings.smtp_port, username, password, sender
+    return host, settings.smtp_port, username, password, sender, settings.smtp_use_tls
 
 
 def send_email(to_email: str, subject: str, body: str) -> bool:
@@ -27,7 +27,7 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
         logger.warning("SMTP not configured — email to %s not sent.", to_email)
         return False
 
-    host, port, username, password, sender = cfg
+    host, port, username, password, sender, use_tls = cfg
 
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
@@ -36,8 +36,10 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
 
     try:
         with smtplib.SMTP(host, port) as server:
-            server.starttls()
-            server.login(username, password)
+            if use_tls:
+                server.starttls()
+            if username and password:
+                server.login(username, password)
             server.sendmail(sender, [to_email], msg.as_string())
         return True
     except Exception:

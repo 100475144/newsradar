@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.api.deps import get_current_active_verified_user, get_db
 from app.modules.auth.models import User
 
 from .repository import NewsRepository
@@ -23,7 +23,7 @@ def list_news(
     limit: int = Query(default=20, ge=1, le=100),
     source_id: int | None = Query(default=None),
     category: str | None = Query(default=None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_verified_user),
     service: NewsService = Depends(get_news_service),
 ):
     result = service.list_news(
@@ -39,7 +39,7 @@ def list_news(
 @router.get("/{news_id}", response_model=NewsResponse)
 def get_news(
     news_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_verified_user),
     service: NewsService = Depends(get_news_service),
 ):
     news = service.get_news(news_id, current_user.id)

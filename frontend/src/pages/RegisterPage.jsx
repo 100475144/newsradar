@@ -31,8 +31,15 @@ export default function RegisterPage() {
     setIsSubmitting(true)
 
     try {
-      await register(formData)
-      navigate('/dashboard', { replace: true })
+      const response = await register(formData)
+      navigate('/login', {
+        replace: true,
+        state: {
+          message:
+            response.message ||
+            'Account created successfully. Check your email to verify your account before signing in.',
+        },
+      })
     } catch (requestError) {
       setError(requestError.message || 'Unable to create the account.')
     } finally {
@@ -46,7 +53,7 @@ export default function RegisterPage() {
         <p className="eyebrow">New workspace</p>
         <h2>Create your account</h2>
         <p>
-          Registration will immediately open a session so private routes work from the first minute.
+          We will send you a verification email before you can sign in to the private workspace.
         </p>
       </div>
 
