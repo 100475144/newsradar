@@ -70,6 +70,7 @@ class NewsService:
             summary=payload.summary,
             published_at=payload.published_at,
             category=payload.category,
+            classification_origin=payload.classification_origin,
             language=payload.language,
             author=payload.author,
             external_id=payload.external_id,

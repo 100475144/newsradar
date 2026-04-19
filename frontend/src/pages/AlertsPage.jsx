@@ -5,6 +5,7 @@ import {
   deactivateAlert,
   deleteAlert,
   getAlerts,
+  getAlertSuggestions,
   updateAlert,
 } from '../api/alertsApi'
 import { getSources } from '../api/sourcesApi'
@@ -60,9 +61,16 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
         }
       : INITIAL_FORM,
   )
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestionsError, setSuggestionsError] = useState('')
+  const [isSuggesting, setIsSuggesting] = useState(false)
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
+    if (name === 'keyword') {
+      setSuggestions([])
+      setSuggestionsError('')
+    }
     setFormData((current) => ({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
@@ -86,6 +94,57 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
     }
     onSave(payload)
   }
+
+  const handleSuggest = async () => {
+    const keyword = formData.keyword.trim()
+
+    if (!keyword) {
+      setSuggestions([])
+      setSuggestionsError('Enter a keyword first to generate related terms.')
+      return
+    }
+
+    setIsSuggesting(true)
+    setSuggestionsError('')
+
+    try {
+      const response = await getAlertSuggestions(keyword)
+      setSuggestions(response.suggestions || [])
+    } catch (requestError) {
+      setSuggestions([])
+      setSuggestionsError(
+        requestError.message || 'Unable to load keyword suggestions right now.',
+      )
+    } finally {
+      setIsSuggesting(false)
+    }
+  }
+
+  const handleSuggestionToggle = (term) => {
+    setFormData((current) => {
+      const currentTerms = parseExpandedKeywords(current.expanded_keywords)
+      const exists = currentTerms.some(
+        (item) => item.toLowerCase() === term.toLowerCase(),
+      )
+      const nextTerms = exists
+        ? currentTerms.filter((item) => item.toLowerCase() !== term.toLowerCase())
+        : [...currentTerms, term].slice(0, 10)
+
+      return {
+        ...current,
+        expanded_keywords: nextTerms.join(', '),
+      }
+    })
+  }
+
+  const handleApplyAllSuggestions = () => {
+    setFormData((current) => ({
+      ...current,
+      expanded_keywords: suggestions.join(', '),
+    }))
+  }
+
+  const selectedSuggestions = parseExpandedKeywords(formData.expanded_keywords)
 
   return (
     <form className="source-form" onSubmit={handleSubmit}>
@@ -138,6 +197,64 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
             placeholder="machine learning, neural networks, deep learning"
           />
         </label>
+      </div>
+
+      <div className="alert-suggestions">
+        <div className="alert-suggestions__toolbar">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={handleSuggest}
+            disabled={isSubmitting || isSuggesting}
+          >
+            {isSuggesting ? 'Generating suggestions...' : 'Recommend related terms'}
+          </button>
+
+          {suggestions.length > 0 ? (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleApplyAllSuggestions}
+              disabled={isSubmitting}
+            >
+              Use all suggestions
+            </button>
+          ) : null}
+        </div>
+
+        <p className="panel-card__text">
+          Generate between 3 and 10 related terms for the current keyword, then
+          click individual suggestions to add or remove them from the alert.
+        </p>
+
+        {suggestionsError ? (
+          <p className="form-message form-message--error">{suggestionsError}</p>
+        ) : null}
+
+        {suggestions.length > 0 ? (
+          <div className="alert-suggestions__list">
+            {suggestions.map((term) => {
+              const isSelected = selectedSuggestions.some(
+                (item) => item.toLowerCase() === term.toLowerCase(),
+              )
+
+              return (
+                <button
+                  key={term}
+                  type="button"
+                  className={
+                    isSelected
+                      ? 'alert-suggestion-chip alert-suggestion-chip--active'
+                      : 'alert-suggestion-chip'
+                  }
+                  onClick={() => handleSuggestionToggle(term)}
+                >
+                  {term}
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
       </div>
 
       {sources.length > 0 ? (

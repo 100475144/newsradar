@@ -3,6 +3,19 @@ import { getNews } from '../api/newsApi'
 
 const PAGE_SIZE = 20
 
+function formatClassificationOrigin(origin) {
+  switch ((origin || '').toLowerCase()) {
+    case 'alert':
+      return 'Classified by alert'
+    case 'source':
+      return 'Classified by source'
+    case 'rss':
+      return 'Classified by RSS'
+    default:
+      return 'Classification pending'
+  }
+}
+
 function newsReducer(state, action) {
   switch (action.type) {
     case 'LOADING':
@@ -29,6 +42,9 @@ function NewsRow({ news }) {
           <span className="source-badge source-badge--active">{news.category}</span>
         ) : null}
       </div>
+      <span className="source-row__url">
+        {formatClassificationOrigin(news.classification_origin)}
+      </span>
       {news.summary ? (
         <p style={{ fontSize: '0.9rem', color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
           {news.summary.length > 250 ? news.summary.slice(0, 250) + '...' : news.summary}

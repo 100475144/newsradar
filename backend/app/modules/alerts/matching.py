@@ -75,6 +75,42 @@ def _build_notification_message(alert: Alert, news) -> str:
     )
 
 
+def resolve_news_classification(
+    *,
+    current_category: str | None,
+    current_origin: str | None,
+    matching_alerts: list[Alert],
+) -> tuple[str | None, str]:
+    """Choose a deterministic category: alert wins over source/RSS when there is a match."""
+    normalized_origin = (current_origin or "unknown").strip().lower() or "unknown"
+    category_votes: dict[str, tuple[int, int]] = {}
+
+    for alert in matching_alerts:
+        category = (getattr(alert, "category", "") or "").strip()
+        if not category:
+            continue
+
+        alert_id = getattr(alert, "id", 0) or 0
+        if category in category_votes:
+            count, first_alert_id = category_votes[category]
+            category_votes[category] = (count + 1, min(first_alert_id, alert_id))
+        else:
+            category_votes[category] = (1, alert_id)
+
+    if not category_votes:
+        return current_category, normalized_origin
+
+    selected_category = min(
+        category_votes.keys(),
+        key=lambda category: (
+            -category_votes[category][0],
+            category_votes[category][1],
+            category,
+        ),
+    )
+    return selected_category, "alert"
+
+
 def process_alerts_for_news(db, news) -> int:
     news_text = _build_news_text(news)
     if not news_text:
@@ -84,18 +120,30 @@ def process_alerts_for_news(db, news) -> int:
     notification_repo = NotificationRepository(db)
 
     alerts = alert_repo.list_active()
+    matching_alerts = [alert for alert in alerts if _matches(alert, news, news_text)]
+
+    if not matching_alerts:
+        return 0
+
+    selected_category, classification_origin = resolve_news_classification(
+        current_category=getattr(news, "category", None),
+        current_origin=getattr(news, "classification_origin", None),
+        matching_alerts=matching_alerts,
+    )
+
+    if (
+        getattr(news, "category", None) != selected_category
+        or getattr(news, "classification_origin", None) != classification_origin
+    ):
+        news.category = selected_category
+        news.classification_origin = classification_origin
+        db.add(news)
+        db.commit()
+        db.refresh(news)
+
     created = 0
 
-    for alert in alerts:
-        if not _matches(alert, news, news_text):
-            continue
-
-        # Classify news with alert's IPTC category if news has no category
-        if not getattr(news, "category", None) and alert.category:
-            news.category = alert.category
-            db.add(news)
-            db.commit()
-            db.refresh(news)
+    for alert in matching_alerts:
 
         title = _build_notification_title(alert)
         message = _build_notification_message(alert, news)

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useReducer, useState } from 'react'
 import { createSource, deleteSource, getSources, updateSource } from '../api/sourcesApi'
+import { request } from '../api/client'
 
-const INITIAL_FORM = { name: '', url: '' }
+const INITIAL_FORM = { name: '', url: '', category: '' }
 
 function sourcesReducer(state, action) {
   switch (action.type) {
@@ -25,7 +26,7 @@ function sourcesReducer(state, action) {
   }
 }
 
-function SourceForm({ initial, onSave, onCancel, isSubmitting, error }) {
+function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories }) {
   const [formData, setFormData] = useState(initial || INITIAL_FORM)
 
   const handleChange = (event) => {
@@ -63,6 +64,22 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error }) {
             required
           />
         </label>
+        <label className="field">
+          <span>IPTC Category</span>
+          <select
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+            required
+          >
+            <option value="" disabled>Select a category...</option>
+            {categories.map((cat) => (
+              <option key={cat.code} value={cat.code}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {error ? <p className="form-message form-message--error">{error}</p> : null}
@@ -92,6 +109,9 @@ function SourceRow({ source, onEdit, onDelete, onToggle, busy }) {
         >
           {source.url}
         </a>
+        {source.category ? (
+          <span className="source-row__url">Category: {source.category}</span>
+        ) : null}
       </div>
 
       <span
@@ -145,12 +165,17 @@ export default function SourcesPage() {
   const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [busyId, setBusyId] = useState(null)
+  const [categories, setCategories] = useState([])
 
   const load = useCallback(async () => {
     dispatch({ type: 'LOADING' })
     try {
-      const items = await getSources()
+      const [items, cats] = await Promise.all([
+        getSources(),
+        request('/alerts/categories'),
+      ])
       dispatch({ type: 'LOADED', items })
+      setCategories(cats)
     } catch (err) {
       dispatch({ type: 'ERROR', error: err.message })
     }
@@ -210,6 +235,7 @@ export default function SourcesPage() {
       const updated = await updateSource(source.id, {
         name: source.name,
         url: source.url,
+        category: source.category,
         is_active: !source.is_active,
       })
       dispatch({ type: 'UPDATE', item: updated })
@@ -265,6 +291,7 @@ export default function SourcesPage() {
             onCancel={cancelForm}
             isSubmitting={isSubmitting}
             error={formError}
+            categories={categories}
           />
         </div>
       ) : null}
@@ -290,11 +317,12 @@ export default function SourcesPage() {
               <div key={source.id} className="panel-card">
                 <h2>Edit source</h2>
                 <SourceForm
-                  initial={{ name: source.name, url: source.url }}
+                  initial={{ name: source.name, url: source.url, category: source.category || '' }}
                   onSave={handleUpdate}
                   onCancel={cancelForm}
                   isSubmitting={isSubmitting}
                   error={formError}
+                  categories={categories}
                 />
               </div>
             ) : (

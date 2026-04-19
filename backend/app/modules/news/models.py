@@ -27,6 +27,7 @@ class News(Base):
 
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     category: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    classification_origin: Mapped[str] = mapped_column(String(20), nullable=False, default="unknown", index=True)
     language: Mapped[str | None] = mapped_column(String(10), nullable=True)
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

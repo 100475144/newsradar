@@ -50,13 +50,18 @@ class CrawlerService:
             fetched_items += 1
 
             item = self._parse_entry(entry, source, feed_language)
+            category, classification_origin = self._resolve_initial_classification(
+                item_category=item.category,
+                source_category=source.category,
+            )
             payload = NewsCreateInternal(
                 source_id=source.id,
                 title=item.title,
                 link=item.link,
                 summary=item.summary,
                 published_at=item.published_at,
-                category=item.category or source.category,
+                category=category,
+                classification_origin=classification_origin,
                 language=item.language,
                 author=item.author,
                 external_id=item.external_id,
@@ -103,6 +108,31 @@ class CrawlerService:
             if term:
                 return str(term)
         return None
+
+    @staticmethod
+    def _normalize_category(value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
+
+    @classmethod
+    def _resolve_initial_classification(
+        cls,
+        *,
+        item_category: str | None,
+        source_category: str | None,
+    ) -> tuple[str | None, str]:
+        """Prefer source-level classification, then RSS metadata as fallback."""
+        normalized_source_category = cls._normalize_category(source_category)
+        if normalized_source_category:
+            return normalized_source_category, "source"
+
+        normalized_item_category = cls._normalize_category(item_category)
+        if normalized_item_category:
+            return normalized_item_category, "rss"
+
+        return None, "unknown"
     
     @staticmethod
     def _normalize_language(value: str | None) -> str | None:

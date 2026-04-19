@@ -11,6 +11,7 @@ class NewsBase(BaseModel):
     summary: Optional[str] = None
     published_at: Optional[datetime] = None
     category: Optional[str] = Field(default=None, max_length=120)
+    classification_origin: str = Field(default="unknown", max_length=20)
     language: Optional[str] = Field(default=None, max_length=10)
     author: Optional[str] = Field(default=None, max_length=255)
 
