@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   activateAlert,
   createAlert,
@@ -10,6 +11,7 @@ import {
 } from '../api/alertsApi'
 import { getSources } from '../api/sourcesApi'
 import { request } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 const INITIAL_FORM = {
   name: '',
@@ -45,20 +47,16 @@ function alertsReducer(state, action) {
 
 function parseExpandedKeywords(raw) {
   if (!raw || !raw.trim()) return []
-  return raw
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean)
+  return raw.split(',').map((k) => k.trim()).filter(Boolean)
 }
 
 function formatSourceLabel(source) {
-  if (!source.medium_name) {
-    return source.name
-  }
+  if (!source.medium_name) return source.name
   return `${source.medium_name} - ${source.name}`
 }
 
 function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories, sources }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState(
     initial
       ? {
@@ -104,24 +102,19 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
 
   const handleSuggest = async () => {
     const keyword = formData.keyword.trim()
-
     if (!keyword) {
       setSuggestions([])
-      setSuggestionsError('Enter a keyword first to generate related terms.')
+      setSuggestionsError(t('alerts.enter_keyword_first'))
       return
     }
-
     setIsSuggesting(true)
     setSuggestionsError('')
-
     try {
       const response = await getAlertSuggestions(keyword)
       setSuggestions(response.suggestions || [])
     } catch (requestError) {
       setSuggestions([])
-      setSuggestionsError(
-        requestError.message || 'Unable to load keyword suggestions right now.',
-      )
+      setSuggestionsError(requestError.message || 'Unable to load keyword suggestions right now.')
     } finally {
       setIsSuggesting(false)
     }
@@ -130,25 +123,16 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
   const handleSuggestionToggle = (term) => {
     setFormData((current) => {
       const currentTerms = parseExpandedKeywords(current.expanded_keywords)
-      const exists = currentTerms.some(
-        (item) => item.toLowerCase() === term.toLowerCase(),
-      )
+      const exists = currentTerms.some((item) => item.toLowerCase() === term.toLowerCase())
       const nextTerms = exists
         ? currentTerms.filter((item) => item.toLowerCase() !== term.toLowerCase())
         : [...currentTerms, term].slice(0, 10)
-
-      return {
-        ...current,
-        expanded_keywords: nextTerms.join(', '),
-      }
+      return { ...current, expanded_keywords: nextTerms.join(', ') }
     })
   }
 
   const handleApplyAllSuggestions = () => {
-    setFormData((current) => ({
-      ...current,
-      expanded_keywords: suggestions.join(', '),
-    }))
+    setFormData((current) => ({ ...current, expanded_keywords: suggestions.join(', ') }))
   }
 
   const selectedSuggestions = parseExpandedKeywords(formData.expanded_keywords)
@@ -157,7 +141,7 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
     <form className="source-form" onSubmit={handleSubmit}>
       <div className="field-grid">
         <label className="field">
-          <span>Alert name</span>
+          <span>{t('alerts.alert_name')}</span>
           <input
             type="text"
             name="name"
@@ -168,7 +152,7 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
           />
         </label>
         <label className="field">
-          <span>Keyword</span>
+          <span>{t('alerts.keyword')}</span>
           <input
             type="text"
             name="keyword"
@@ -179,23 +163,16 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
           />
         </label>
         <label className="field">
-          <span>IPTC Category</span>
-          <select
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            required
-          >
-            <option value="" disabled>Select a category...</option>
+          <span>{t('alerts.iptc_category')}</span>
+          <select name="category" value={formData.category} onChange={handleChange} required>
+            <option value="" disabled>{t('alerts.select_category')}</option>
             {categories.map((cat) => (
-              <option key={cat.code} value={cat.code}>
-                {cat.label}
-              </option>
+              <option key={cat.code} value={cat.code}>{cat.label}</option>
             ))}
           </select>
         </label>
         <label className="field">
-          <span>Related keywords (comma-separated, 3-10 if provided)</span>
+          <span>{t('alerts.related_keywords')}</span>
           <input
             type="text"
             name="expanded_keywords"
@@ -214,9 +191,8 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
             onClick={handleSuggest}
             disabled={isSubmitting || isSuggesting}
           >
-            {isSuggesting ? 'Generating suggestions...' : 'Recommend related terms'}
+            {isSuggesting ? t('alerts.generating') : t('alerts.recommend')}
           </button>
-
           {suggestions.length > 0 ? (
             <button
               type="button"
@@ -224,15 +200,12 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
               onClick={handleApplyAllSuggestions}
               disabled={isSubmitting}
             >
-              Use all suggestions
+              {t('alerts.use_all')}
             </button>
           ) : null}
         </div>
 
-        <p className="panel-card__text">
-          Generate between 3 and 10 related terms for the current keyword, then
-          click individual suggestions to add or remove them from the alert.
-        </p>
+        <p className="panel-card__text">{t('alerts.suggestions_info')}</p>
 
         {suggestionsError ? (
           <p className="form-message form-message--error">{suggestionsError}</p>
@@ -244,7 +217,6 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
               const isSelected = selectedSuggestions.some(
                 (item) => item.toLowerCase() === term.toLowerCase(),
               )
-
               return (
                 <button
                   key={term}
@@ -267,14 +239,19 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
       {sources.length > 0 ? (
         <div style={{ marginTop: '0.5rem' }}>
           <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>
-            Monitor specific sources (leave empty for all):
+            {t('alerts.monitor_sources')}
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
             {sources.map((src) => (
               <label
                 key={src.id}
                 className="field field--inline"
-                style={{ background: formData.source_ids.includes(src.id) ? 'var(--ok-soft)' : 'transparent', padding: '0.35rem 0.6rem', borderRadius: '10px', cursor: 'pointer' }}
+                style={{
+                  background: formData.source_ids.includes(src.id) ? 'var(--ok-soft)' : 'transparent',
+                  padding: '0.35rem 0.6rem',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                }}
               >
                 <input
                   type="checkbox"
@@ -296,7 +273,7 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
             checked={formData.notify_in_app}
             onChange={handleChange}
           />
-          <span>In-app notifications</span>
+          <span>{t('alerts.in_app')}</span>
         </label>
         <label className="field field--inline">
           <input
@@ -305,7 +282,7 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
             checked={formData.notify_email}
             onChange={handleChange}
           />
-          <span>Email notifications</span>
+          <span>{t('alerts.email_notif')}</span>
         </label>
       </div>
 
@@ -313,23 +290,25 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
 
       <div className="source-form__actions">
         <button type="submit" className="primary-button" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : initial ? 'Save changes' : 'Add alert'}
+          {isSubmitting ? t('alerts.saving') : initial ? t('alerts.save_changes') : t('alerts.add')}
         </button>
         <button type="button" className="secondary-button" onClick={onCancel}>
-          Cancel
+          {t('alerts.cancel')}
         </button>
       </div>
     </form>
   )
 }
 
-function AlertRow({ alert, onEdit, onDelete, onToggle, busy }) {
+function AlertRow({ alert, onEdit, onDelete, onToggle, busy, canEdit }) {
+  const { t } = useTranslation()
+
   return (
     <div className="source-row">
       <div className="source-row__info">
         <strong className="source-row__name">{alert.name}</strong>
         <span className="source-row__url">
-          Keyword: <em>{alert.keyword}</em> &mdash; Category: <em>{alert.category}</em>
+          {t('alerts.keyword')}: <em>{alert.keyword}</em> &mdash; {t('alerts.iptc_category')}: <em>{alert.category}</em>
         </span>
         {alert.expanded_keywords && alert.expanded_keywords.length > 0 ? (
           <span className="source-row__url">
@@ -338,60 +317,44 @@ function AlertRow({ alert, onEdit, onDelete, onToggle, busy }) {
         ) : null}
         {alert.source_ids && alert.source_ids.length > 0 ? (
           <span className="source-row__url">
-            Sources: {alert.source_ids.length} selected
+            {t('alerts.sources_selected', { count: alert.source_ids.length })}
           </span>
         ) : (
-          <span className="source-row__url">Sources: all</span>
+          <span className="source-row__url">{t('alerts.sources_all')}</span>
         )}
         <span className="source-row__url">
-          {alert.notify_in_app ? 'In-app' : null}
+          {alert.notify_in_app ? t('alerts.in_app') : null}
           {alert.notify_in_app && alert.notify_email ? ' · ' : null}
-          {alert.notify_email ? 'Email' : null}
-          {!alert.notify_in_app && !alert.notify_email ? 'No notifications' : null}
+          {alert.notify_email ? t('alerts.email_notif') : null}
+          {!alert.notify_in_app && !alert.notify_email ? t('alerts.no_notifications_config') : null}
         </span>
       </div>
 
-      <span
-        className={
-          alert.is_active
-            ? 'source-badge source-badge--active'
-            : 'source-badge source-badge--inactive'
-        }
-      >
-        {alert.is_active ? 'Active' : 'Inactive'}
+      <span className={alert.is_active ? 'source-badge source-badge--active' : 'source-badge source-badge--inactive'}>
+        {alert.is_active ? t('alerts.active') : t('alerts.inactive')}
       </span>
 
-      <div className="source-row__actions">
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => onToggle(alert)}
-          disabled={busy}
-        >
-          {alert.is_active ? 'Deactivate' : 'Activate'}
-        </button>
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => onEdit(alert)}
-          disabled={busy}
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          className="danger-button"
-          onClick={() => onDelete(alert.id)}
-          disabled={busy}
-        >
-          Delete
-        </button>
-      </div>
+      {canEdit ? (
+        <div className="source-row__actions">
+          <button type="button" className="secondary-button" onClick={() => onToggle(alert)} disabled={busy}>
+            {alert.is_active ? t('alerts.deactivate') : t('alerts.activate')}
+          </button>
+          <button type="button" className="secondary-button" onClick={() => onEdit(alert)} disabled={busy}>
+            {t('alerts.edit')}
+          </button>
+          <button type="button" className="danger-button" onClick={() => onDelete(alert.id)} disabled={busy}>
+            {t('alerts.delete')}
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }
 
 export default function AlertsPage() {
+  const { user } = useAuth()
+  const { t } = useTranslation()
+  const canEdit = user?.role !== 'lector'
   const [state, dispatch] = useReducer(alertsReducer, {
     status: 'loading',
     items: [],
@@ -421,9 +384,7 @@ export default function AlertsPage() {
     }
   }, [])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(() => { load() }, [load])
 
   const handleAdd = async (formData) => {
     setFormError('')
@@ -454,7 +415,7 @@ export default function AlertsPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this alert? This cannot be undone.')) return
+    if (!window.confirm(t('alerts.delete_confirm'))) return
     setBusyId(id)
     try {
       await deleteAlert(id)
@@ -480,46 +441,29 @@ export default function AlertsPage() {
     }
   }
 
-  const openAdd = () => {
-    setEditing(null)
-    setFormError('')
-    setShowForm(true)
-  }
-
-  const openEdit = (alert) => {
-    setEditing(alert)
-    setFormError('')
-    setShowForm(false)
-  }
-
-  const cancelForm = () => {
-    setShowForm(false)
-    setEditing(null)
-    setFormError('')
-  }
+  const openAdd = () => { setEditing(null); setFormError(''); setShowForm(true) }
+  const openEdit = (alert) => { setEditing(alert); setFormError(''); setShowForm(false) }
+  const cancelForm = () => { setShowForm(false); setEditing(null); setFormError('') }
 
   return (
     <section className="sources-page">
       <div className="hero-card">
-        <p className="eyebrow">Alerts</p>
-        <h1>Your alerts</h1>
-        <p>
-          Define keywords and IPTC categories to watch. NewsRadar will match incoming
-          articles against your active alerts and notify you accordingly.
-        </p>
+        <p className="eyebrow">{t('alerts.eyebrow')}</p>
+        <h1>{t('alerts.title')}</h1>
+        <p>{t('alerts.subtitle')}</p>
       </div>
 
       <div className="sources-toolbar">
-        {!showForm && !editing ? (
+        {canEdit && !showForm && !editing ? (
           <button type="button" className="primary-button" onClick={openAdd}>
-            + Add alert
+            {t('alerts.add_alert')}
           </button>
         ) : null}
       </div>
 
       {showForm ? (
         <div className="panel-card">
-          <h2>New alert</h2>
+          <h2>{t('alerts.new_alert')}</h2>
           <AlertForm
             onSave={handleAdd}
             onCancel={cancelForm}
@@ -532,7 +476,7 @@ export default function AlertsPage() {
       ) : null}
 
       {state.status === 'loading' ? (
-        <p className="sources-feedback">Loading alerts...</p>
+        <p className="sources-feedback">{t('alerts.loading')}</p>
       ) : null}
 
       {state.status === 'error' ? (
@@ -541,7 +485,7 @@ export default function AlertsPage() {
 
       {state.status === 'success' && state.items.length === 0 ? (
         <div className="panel-card sources-empty">
-          <p>No alerts yet. Create your first alert above.</p>
+          <p>{t('alerts.empty')}</p>
         </div>
       ) : null}
 
@@ -550,7 +494,7 @@ export default function AlertsPage() {
           {state.items.map((alert) =>
             editing?.id === alert.id ? (
               <div key={alert.id} className="panel-card">
-                <h2>Edit alert</h2>
+                <h2>{t('alerts.edit_alert')}</h2>
                 <AlertForm
                   initial={alert}
                   onSave={handleUpdate}
@@ -569,6 +513,7 @@ export default function AlertsPage() {
                 onDelete={handleDelete}
                 onToggle={handleToggle}
                 busy={busyId === alert.id}
+                canEdit={canEdit}
               />
             ),
           )}

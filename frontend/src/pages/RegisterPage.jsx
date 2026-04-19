@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 
 const INITIAL_FORM = {
@@ -13,16 +14,14 @@ const INITIAL_FORM = {
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { register } = useAuth()
+  const { t } = useTranslation()
   const [formData, setFormData] = useState(INITIAL_FORM)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange = (event) => {
     const { name, value } = event.target
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }))
+    setFormData((current) => ({ ...current, [name]: value }))
   }
 
   const handleSubmit = async (event) => {
@@ -50,17 +49,15 @@ export default function RegisterPage() {
   return (
     <div className="auth-card">
       <div className="auth-card__header">
-        <p className="eyebrow">New workspace</p>
-        <h2>Create your account</h2>
-        <p>
-          We will send you a verification email before you can sign in to the private workspace.
-        </p>
+        <p className="eyebrow">{t('register.eyebrow')}</p>
+        <h2>{t('register.title')}</h2>
+        <p>{t('register.subtitle')}</p>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
         <div className="field-grid">
           <label className="field">
-            <span>First name</span>
+            <span>{t('register.first_name')}</span>
             <input
               type="text"
               name="first_name"
@@ -73,7 +70,7 @@ export default function RegisterPage() {
           </label>
 
           <label className="field">
-            <span>Last name</span>
+            <span>{t('register.last_name')}</span>
             <input
               type="text"
               name="last_name"
@@ -87,19 +84,19 @@ export default function RegisterPage() {
         </div>
 
         <label className="field">
-          <span>Organization</span>
+          <span>{t('register.organization')}</span>
           <input
             type="text"
             name="organization"
             value={formData.organization}
             onChange={handleChange}
-            placeholder="Optional"
+            placeholder={t('register.organization_placeholder')}
             autoComplete="organization"
           />
         </label>
 
         <label className="field">
-          <span>Email</span>
+          <span>{t('register.email')}</span>
           <input
             type="email"
             name="email"
@@ -112,13 +109,13 @@ export default function RegisterPage() {
         </label>
 
         <label className="field">
-          <span>Password</span>
+          <span>{t('register.password')}</span>
           <input
             type="password"
             name="password"
             value={formData.password}
             onChange={handleChange}
-            placeholder="Minimum 8 characters"
+            placeholder={t('register.password_placeholder')}
             autoComplete="new-password"
             minLength={8}
             required
@@ -127,17 +124,13 @@ export default function RegisterPage() {
 
         {error ? <p className="form-message form-message--error">{error}</p> : null}
 
-        <button
-          type="submit"
-          className="primary-button"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Creating account...' : 'Create account'}
+        <button type="submit" className="primary-button" disabled={isSubmitting}>
+          {isSubmitting ? t('register.creating') : t('register.create')}
         </button>
       </form>
 
       <p className="auth-card__footer">
-        Already registered? <Link to="/login">Sign in here</Link>.
+        {t('register.already_registered')} <Link to="/login">{t('register.sign_in_here')}</Link>.
       </p>
     </div>
   )

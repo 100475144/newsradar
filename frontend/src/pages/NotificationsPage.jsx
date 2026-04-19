@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   deleteNotification,
   getNotifications,
@@ -27,6 +28,8 @@ function notificationsReducer(state, action) {
 }
 
 function NotificationRow({ notification, onToggleRead, onDelete, busy }) {
+  const { t } = useTranslation()
+
   return (
     <div
       className="source-row"
@@ -48,7 +51,7 @@ function NotificationRow({ notification, onToggleRead, onDelete, busy }) {
               : 'source-badge source-badge--active'
           }
         >
-          {notification.is_read ? 'Read' : 'Unread'}
+          {notification.is_read ? t('notifications.read') : t('notifications.unread')}
         </span>
       </div>
 
@@ -73,7 +76,7 @@ function NotificationRow({ notification, onToggleRead, onDelete, busy }) {
           onClick={() => onToggleRead(notification)}
           disabled={busy}
         >
-          {notification.is_read ? 'Mark unread' : 'Mark read'}
+          {notification.is_read ? t('notifications.mark_unread') : t('notifications.mark_read')}
         </button>
         <button
           type="button"
@@ -81,7 +84,7 @@ function NotificationRow({ notification, onToggleRead, onDelete, busy }) {
           onClick={() => onDelete(notification.id)}
           disabled={busy}
         >
-          Delete
+          {t('notifications.delete')}
         </button>
       </div>
     </div>
@@ -89,6 +92,7 @@ function NotificationRow({ notification, onToggleRead, onDelete, busy }) {
 }
 
 export default function NotificationsPage() {
+  const { t } = useTranslation()
   const [state, dispatch] = useReducer(notificationsReducer, {
     status: 'loading',
     items: [],
@@ -125,7 +129,7 @@ export default function NotificationsPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this notification?')) return
+    if (!window.confirm(t('notifications.delete_confirm'))) return
     setBusyId(id)
     try {
       await deleteNotification(id)
@@ -142,16 +146,18 @@ export default function NotificationsPage() {
   return (
     <section className="sources-page">
       <div className="hero-card">
-        <p className="eyebrow">Notifications</p>
-        <h1>Your inbox</h1>
+        <p className="eyebrow">{t('notifications.eyebrow')}</p>
+        <h1>{t('notifications.title')}</h1>
         <p>
-          Notifications generated when incoming news matches your active alerts.
-          {unreadCount > 0 ? ` You have ${unreadCount} unread.` : ' All caught up!'}
+          {t('notifications.subtitle')}{' '}
+          {unreadCount > 0
+            ? t('notifications.unread_count', { count: unreadCount })
+            : t('notifications.all_caught_up')}
         </p>
       </div>
 
       {state.status === 'loading' ? (
-        <p className="sources-feedback">Loading notifications...</p>
+        <p className="sources-feedback">{t('notifications.loading')}</p>
       ) : null}
 
       {state.status === 'error' ? (
@@ -160,7 +166,7 @@ export default function NotificationsPage() {
 
       {state.status === 'success' && state.items.length === 0 ? (
         <div className="panel-card sources-empty">
-          <p>No notifications yet. They will appear once news matches your alerts.</p>
+          <p>{t('notifications.empty')}</p>
         </div>
       ) : null}
 

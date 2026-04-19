@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   createSource,
   deleteSource,
@@ -7,6 +8,7 @@ import {
   updateSource,
 } from '../api/sourcesApi'
 import { request } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 const INITIAL_FORM = {
   medium_name: '',
@@ -43,6 +45,7 @@ function formatCategoryLabel(category, categories) {
 }
 
 function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories }) {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState(initial || INITIAL_FORM)
 
   const handleChange = (event) => {
@@ -59,7 +62,7 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
     <form className="source-form" onSubmit={handleSubmit}>
       <div className="field-grid">
         <label className="field">
-          <span>Medium / Outlet</span>
+          <span>{t('sources.medium')}</span>
           <input
             type="text"
             name="medium_name"
@@ -70,7 +73,7 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
           />
         </label>
         <label className="field">
-          <span>Channel name</span>
+          <span>{t('sources.channel')}</span>
           <input
             type="text"
             name="name"
@@ -81,7 +84,7 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
           />
         </label>
         <label className="field">
-          <span>RSS URL</span>
+          <span>{t('sources.rss_url')}</span>
           <input
             type="url"
             name="url"
@@ -92,18 +95,11 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
           />
         </label>
         <label className="field">
-          <span>IPTC Category</span>
-          <select
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            required
-          >
-            <option value="" disabled>Select a category...</option>
+          <span>{t('sources.iptc_category')}</span>
+          <select name="category" value={formData.category} onChange={handleChange} required>
+            <option value="" disabled>{t('sources.select_category')}</option>
             {categories.map((category) => (
-              <option key={category.code} value={category.code}>
-                {category.label}
-              </option>
+              <option key={category.code} value={category.code}>{category.label}</option>
             ))}
           </select>
         </label>
@@ -113,25 +109,27 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
 
       <div className="source-form__actions">
         <button type="submit" className="primary-button" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : initial ? 'Save changes' : 'Add source'}
+          {isSubmitting ? t('sources.saving') : initial ? t('sources.save_changes') : t('sources.add')}
         </button>
         <button type="button" className="secondary-button" onClick={onCancel}>
-          Cancel
+          {t('sources.cancel')}
         </button>
       </div>
     </form>
   )
 }
 
-function SourceRow({ source, onEdit, onDelete, onToggle, busy, categories }) {
+function SourceRow({ source, onEdit, onDelete, onToggle, busy, categories, canEdit }) {
+  const { t } = useTranslation()
+
   return (
     <div className="source-row">
       <div className="source-row__info">
         <strong className="source-row__name">
           {source.medium_name} - {source.name}
         </strong>
-        <span className="source-row__url">Medium: {source.medium_name}</span>
-        <span className="source-row__url">Channel: {source.name}</span>
+        <span className="source-row__url">{t('sources.medium_col')}: {source.medium_name}</span>
+        <span className="source-row__url">{t('sources.channel_col')}: {source.name}</span>
         <a
           className="source-row__url"
           href={source.url}
@@ -142,52 +140,36 @@ function SourceRow({ source, onEdit, onDelete, onToggle, busy, categories }) {
         </a>
         {source.category ? (
           <span className="source-row__url">
-            Category: {formatCategoryLabel(source.category, categories)}
+            {t('sources.category_col')}: {formatCategoryLabel(source.category, categories)}
           </span>
         ) : null}
       </div>
 
-      <span
-        className={
-          source.is_active
-            ? 'source-badge source-badge--active'
-            : 'source-badge source-badge--inactive'
-        }
-      >
-        {source.is_active ? 'Active' : 'Inactive'}
+      <span className={source.is_active ? 'source-badge source-badge--active' : 'source-badge source-badge--inactive'}>
+        {source.is_active ? t('sources.active') : t('sources.inactive')}
       </span>
 
-      <div className="source-row__actions">
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => onToggle(source)}
-          disabled={busy}
-        >
-          {source.is_active ? 'Deactivate' : 'Activate'}
-        </button>
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => onEdit(source)}
-          disabled={busy}
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          className="danger-button"
-          onClick={() => onDelete(source.id)}
-          disabled={busy}
-        >
-          Delete
-        </button>
-      </div>
+      {canEdit ? (
+        <div className="source-row__actions">
+          <button type="button" className="secondary-button" onClick={() => onToggle(source)} disabled={busy}>
+            {source.is_active ? t('sources.deactivate') : t('sources.activate')}
+          </button>
+          <button type="button" className="secondary-button" onClick={() => onEdit(source)} disabled={busy}>
+            {t('sources.edit')}
+          </button>
+          <button type="button" className="danger-button" onClick={() => onDelete(source.id)} disabled={busy}>
+            {t('sources.delete')}
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }
 
 export default function SourcesPage() {
+  const { user } = useAuth()
+  const { t } = useTranslation()
+  const canEdit = user?.role !== 'lector'
   const [state, dispatch] = useReducer(sourcesReducer, {
     status: 'loading',
     items: [],
@@ -217,9 +199,7 @@ export default function SourcesPage() {
     }
   }, [])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(() => { load() }, [load])
 
   const handleAdd = async (formData) => {
     setFormError('')
@@ -239,10 +219,7 @@ export default function SourcesPage() {
     setFormError('')
     setIsSubmitting(true)
     try {
-      const updated = await updateSource(editing.id, {
-        ...formData,
-        is_active: editing.is_active,
-      })
+      const updated = await updateSource(editing.id, { ...formData, is_active: editing.is_active })
       dispatch({ type: 'UPDATE', item: updated })
       setEditing(null)
     } catch (error) {
@@ -253,7 +230,7 @@ export default function SourcesPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this source? This cannot be undone.')) return
+    if (!window.confirm(t('sources.delete_confirm'))) return
     setBusyId(id)
     try {
       await deleteSource(id)
@@ -283,60 +260,40 @@ export default function SourcesPage() {
     }
   }
 
-  const openAdd = () => {
-    setEditing(null)
-    setFormError('')
-    setShowForm(true)
-  }
-
-  const openEdit = (source) => {
-    setEditing(source)
-    setFormError('')
-    setShowForm(false)
-  }
-
-  const cancelForm = () => {
-    setShowForm(false)
-    setEditing(null)
-    setFormError('')
-  }
+  const openAdd = () => { setEditing(null); setFormError(''); setShowForm(true) }
+  const openEdit = (source) => { setEditing(source); setFormError(''); setShowForm(false) }
+  const cancelForm = () => { setShowForm(false); setEditing(null); setFormError('') }
 
   return (
     <section className="sources-page">
       <div className="hero-card">
-        <p className="eyebrow">RSS Feeds</p>
-        <h1>Your sources</h1>
-        <p>
-          Every user receives the default NewsRadar catalog on first access, and you
-          can also create extra RSS channels explicitly linked to a media outlet and
-          an IPTC category.
-        </p>
+        <p className="eyebrow">{t('sources.eyebrow')}</p>
+        <h1>{t('sources.title')}</h1>
+        <p>{t('sources.subtitle')}</p>
       </div>
 
       {catalogSummary ? (
         <div className="panel-card">
-          <h2>Default catalog</h2>
+          <h2>{t('sources.default_catalog')}</h2>
           <dl className="detail-list">
             <div>
-              <dt>Initial channels</dt>
+              <dt>{t('sources.initial_channels')}</dt>
               <dd>{catalogSummary.total_channels}</dd>
             </div>
             <div>
-              <dt>Media outlets</dt>
+              <dt>{t('sources.media_outlets')}</dt>
               <dd>{catalogSummary.total_media_outlets}</dd>
             </div>
             <div>
-              <dt>IPTC coverage</dt>
-              <dd>
-                {catalogSummary.iptc_categories_covered} / {catalogSummary.iptc_categories_total}
-              </dd>
+              <dt>{t('sources.iptc_coverage')}</dt>
+              <dd>{catalogSummary.iptc_categories_covered} / {catalogSummary.iptc_categories_total}</dd>
             </div>
             <div>
-              <dt>Status</dt>
+              <dt>{t('sources.status')}</dt>
               <dd>
                 {catalogSummary.covers_all_iptc_categories
-                  ? 'All first-level IPTC categories covered'
-                  : 'Coverage incomplete'}
+                  ? t('sources.all_covered')
+                  : t('sources.coverage_incomplete')}
               </dd>
             </div>
           </dl>
@@ -344,16 +301,16 @@ export default function SourcesPage() {
       ) : null}
 
       <div className="sources-toolbar">
-        {!showForm && !editing ? (
+        {canEdit && !showForm && !editing ? (
           <button type="button" className="primary-button" onClick={openAdd}>
-            + Add source
+            {t('sources.add_source')}
           </button>
         ) : null}
       </div>
 
       {showForm ? (
         <div className="panel-card">
-          <h2>New source</h2>
+          <h2>{t('sources.new_source')}</h2>
           <SourceForm
             onSave={handleAdd}
             onCancel={cancelForm}
@@ -365,7 +322,7 @@ export default function SourcesPage() {
       ) : null}
 
       {state.status === 'loading' ? (
-        <p className="sources-feedback">Loading sources...</p>
+        <p className="sources-feedback">{t('sources.loading')}</p>
       ) : null}
 
       {state.status === 'error' ? (
@@ -374,7 +331,7 @@ export default function SourcesPage() {
 
       {state.status === 'success' && state.items.length === 0 ? (
         <div className="panel-card sources-empty">
-          <p>No sources yet. Add your first RSS feed above.</p>
+          <p>{t('sources.empty')}</p>
         </div>
       ) : null}
 
@@ -383,7 +340,7 @@ export default function SourcesPage() {
           {state.items.map((source) =>
             editing?.id === source.id ? (
               <div key={source.id} className="panel-card">
-                <h2>Edit source</h2>
+                <h2>{t('sources.edit_source')}</h2>
                 <SourceForm
                   initial={{
                     medium_name: source.medium_name,
@@ -407,6 +364,7 @@ export default function SourcesPage() {
                 onToggle={handleToggle}
                 busy={busyId === source.id}
                 categories={categories}
+                canEdit={canEdit}
               />
             ),
           )}
