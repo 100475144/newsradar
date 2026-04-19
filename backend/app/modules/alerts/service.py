@@ -4,15 +4,31 @@ from fastapi import HTTPException, status
 
 from app.modules.alerts.repository import AlertRepository
 from app.modules.alerts.schemas import AlertCreate, AlertUpdate
+from app.modules.sources.repository import SourceRepository
 
 
 class AlertService:
     MAX_ALERTS_PER_USER = 20
 
-    def __init__(self, repository: AlertRepository):
+    def __init__(self, repository: AlertRepository, source_repository: SourceRepository):
         self.repository = repository
+        self.source_repository = source_repository
+
+    def _ensure_sources_owned_by_user(self, source_ids: list[int] | None, user_id: int) -> None:
+        if not source_ids:
+            return
+
+        for source_id in source_ids:
+            source = self.source_repository.get_by_id_and_owner(source_id, user_id)
+            if not source:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="One or more selected sources do not belong to this user.",
+                )
 
     def create_alert(self, data: AlertCreate, user_id: int):
+        self._ensure_sources_owned_by_user(data.source_ids, user_id)
+
         if self.repository.count_for_user(user_id) >= self.MAX_ALERTS_PER_USER:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -44,6 +60,8 @@ class AlertService:
 
     def update_alert(self, alert_id: int, data: AlertUpdate, user_id: int):
         alert = self.get_alert(alert_id, user_id)
+
+        self._ensure_sources_owned_by_user(data.source_ids, user_id)
 
         fields = {
             "name": data.name.strip() if data.name is not None else None,

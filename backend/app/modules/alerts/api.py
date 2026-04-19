@@ -16,6 +16,7 @@ from app.modules.alerts.schemas import AlertCreate, AlertResponse, AlertUpdate
 from app.modules.alerts.service import AlertService
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserRole
+from app.modules.sources.repository import SourceRepository
 
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
@@ -25,7 +26,7 @@ _gestor_or_admin = require_role(UserRole.ADMIN, UserRole.GESTOR)
 
 
 def get_alert_service(db: Session = Depends(get_db)) -> AlertService:
-    return AlertService(AlertRepository(db))
+    return AlertService(AlertRepository(db), SourceRepository(db))
 
 
 # ── Read endpoints (any authenticated user) ──────────────────────────
