@@ -93,6 +93,7 @@ def test_matching_news_sends_email_notification_via_mailhog():
         created_ids["user_id"] = user.id
 
         source = Source(
+            medium_name="Example News",
             name=f"Test Source {unique}",
             url=source_url,
             category="science_technology",

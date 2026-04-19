@@ -31,12 +31,13 @@ class SourceRepository:
 		return (
 			self.db.query(Source)
 			.filter(Source.created_by == owner_id)
-			.order_by(Source.created_at.desc())
+			.order_by(Source.medium_name.asc(), Source.name.asc(), Source.created_at.desc())
 			.all()
 		)
 
 	def create(self, source_data: SourceCreate, owner_id: int) -> Source:
 		source = Source(
+			medium_name=source_data.medium_name.strip(),
 			name=source_data.name.strip(),
 			url=str(source_data.url),
 			category=source_data.category,
@@ -50,7 +51,7 @@ class SourceRepository:
 	def update(self, source: Source, source_data: SourceUpdate) -> Source:
 		updates = source_data.model_dump(exclude_unset=True)
 		for field, value in updates.items():
-			if field == "name" and isinstance(value, str):
+			if field in {"medium_name", "name"} and isinstance(value, str):
 				value = value.strip()
 			elif field == "url" and value is not None:
 				value = str(value)

@@ -1,12 +1,18 @@
-"""Seed inicial de 100+ canales RSS de 10+ medios cubriendo todas las categorías IPTC.
+"""Default RSS catalog with 100+ channels across 10+ media outlets and all IPTC categories."""
 
-Se ejecuta al arrancar la aplicación. Solo inserta si no existen fuentes
-asignadas al usuario admin (evita duplicados en reinicios).
-"""
+from __future__ import annotations
 
-# Cada tupla: (nombre_medio, url_rss, iptc_category_code)
-RSS_SEEDS: list[tuple[str, str, str]] = [
-    # ── BBC (UK) ─────────────────────────────────────────────────────
+from collections.abc import Iterable
+
+from sqlalchemy.orm import Session
+
+from app.core.iptc import IPTC_CATEGORY_CODES
+from app.modules.sources.models import Source
+
+
+# Each tuple stores: ("Medium - Channel", rss_url, iptc_category_code)
+RSS_SEEDS_RAW: list[tuple[str, str, str]] = [
+    # BBC
     ("BBC - Top Stories", "https://feeds.bbci.co.uk/news/rss.xml", "society"),
     ("BBC - World", "https://feeds.bbci.co.uk/news/world/rss.xml", "conflict_war_peace"),
     ("BBC - Business", "https://feeds.bbci.co.uk/news/business/rss.xml", "economy_business_finance"),
@@ -18,7 +24,7 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("BBC - Education", "https://feeds.bbci.co.uk/news/education/rss.xml", "education"),
     ("BBC - Sport", "https://feeds.bbci.co.uk/sport/rss.xml", "sport"),
 
-    # ── Reuters ──────────────────────────────────────────────────────
+    # Reuters
     ("Reuters - World", "https://www.reutersagency.com/feed/?best-topics=world&post_type=best", "conflict_war_peace"),
     ("Reuters - Business", "https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best", "economy_business_finance"),
     ("Reuters - Technology", "https://www.reutersagency.com/feed/?best-topics=tech&post_type=best", "science_technology"),
@@ -26,7 +32,7 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("Reuters - Lifestyle", "https://www.reutersagency.com/feed/?best-topics=lifestyle&post_type=best", "lifestyle_leisure"),
     ("Reuters - Environment", "https://www.reutersagency.com/feed/?best-topics=environment&post_type=best", "environment"),
 
-    # ── The Guardian (UK) ────────────────────────────────────────────
+    # The Guardian
     ("The Guardian - World", "https://www.theguardian.com/world/rss", "conflict_war_peace"),
     ("The Guardian - Politics", "https://www.theguardian.com/politics/rss", "politics"),
     ("The Guardian - Environment", "https://www.theguardian.com/environment/rss", "environment"),
@@ -40,19 +46,19 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("The Guardian - Law", "https://www.theguardian.com/law/rss", "crime_law_justice"),
     ("The Guardian - Weather", "https://www.theguardian.com/weather/rss", "weather"),
 
-    # ── El País (Spain) ──────────────────────────────────────────────
-    ("El País - Portada", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada", "society"),
-    ("El País - Internacional", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/internacional", "conflict_war_peace"),
-    ("El País - Economía", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia", "economy_business_finance"),
-    ("El País - Ciencia", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/ciencia", "science_technology"),
-    ("El País - Tecnología", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/tecnologia", "science_technology"),
-    ("El País - Cultura", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/cultura", "arts_culture_entertainment"),
-    ("El País - Deportes", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/deportes", "sport"),
-    ("El País - Salud", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/salud", "health"),
-    ("El País - Educación", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/educacion", "education"),
-    ("El País - Clima", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/clima-y-medio-ambiente", "environment"),
+    # El Pais
+    ("El Pais - Portada", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada", "society"),
+    ("El Pais - Internacional", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/internacional", "conflict_war_peace"),
+    ("El Pais - Economia", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/economia", "economy_business_finance"),
+    ("El Pais - Ciencia", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/ciencia", "science_technology"),
+    ("El Pais - Tecnologia", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/tecnologia", "science_technology"),
+    ("El Pais - Cultura", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/cultura", "arts_culture_entertainment"),
+    ("El Pais - Deportes", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/deportes", "sport"),
+    ("El Pais - Salud", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/salud", "health"),
+    ("El Pais - Educacion", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/educacion", "education"),
+    ("El Pais - Clima", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/clima-y-medio-ambiente", "environment"),
 
-    # ── CNN ──────────────────────────────────────────────────────────
+    # CNN
     ("CNN - Top Stories", "http://rss.cnn.com/rss/edition.rss", "society"),
     ("CNN - World", "http://rss.cnn.com/rss/edition_world.rss", "conflict_war_peace"),
     ("CNN - Business", "http://rss.cnn.com/rss/money_news_international.rss", "economy_business_finance"),
@@ -61,11 +67,11 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("CNN - Sport", "http://rss.cnn.com/rss/edition_sport.rss", "sport"),
     ("CNN - Health", "http://rss.cnn.com/rss/edition_health.rss", "health"),
 
-    # ── Al Jazeera ───────────────────────────────────────────────────
+    # Al Jazeera
     ("Al Jazeera - News", "https://www.aljazeera.com/xml/rss/all.xml", "conflict_war_peace"),
-    ("Al Jazeera - Economy", "https://www.aljazeera.com/xml/rss/all.xml", "economy_business_finance"),
+    ("The Guardian - UK News", "https://www.theguardian.com/uk-news/rss", "society"),
 
-    # ── NPR (US) ─────────────────────────────────────────────────────
+    # NPR
     ("NPR - News", "https://feeds.npr.org/1001/rss.xml", "society"),
     ("NPR - World", "https://feeds.npr.org/1004/rss.xml", "conflict_war_peace"),
     ("NPR - Politics", "https://feeds.npr.org/1014/rss.xml", "politics"),
@@ -76,7 +82,7 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("NPR - Arts & Life", "https://feeds.npr.org/1008/rss.xml", "arts_culture_entertainment"),
     ("NPR - Religion", "https://feeds.npr.org/1122/rss.xml", "religion_belief"),
 
-    # ── The New York Times ───────────────────────────────────────────
+    # The New York Times
     ("NYT - World", "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "conflict_war_peace"),
     ("NYT - Politics", "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml", "politics"),
     ("NYT - Business", "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", "economy_business_finance"),
@@ -89,7 +95,7 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("NYT - Climate", "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml", "environment"),
     ("NYT - Obituaries", "https://rss.nytimes.com/services/xml/rss/nyt/Obituaries.xml", "human_interest"),
 
-    # ── Deutsche Welle (Germany) ─────────────────────────────────────
+    # Deutsche Welle
     ("DW - Top Stories", "https://rss.dw.com/rdf/rss-en-top", "society"),
     ("DW - World", "https://rss.dw.com/rdf/rss-en-world", "conflict_war_peace"),
     ("DW - Business", "https://rss.dw.com/rdf/rss-en-bus", "economy_business_finance"),
@@ -98,14 +104,14 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("DW - Culture", "https://rss.dw.com/rdf/rss-en-cul", "arts_culture_entertainment"),
     ("DW - Sports", "https://rss.dw.com/rdf/rss-en-sports", "sport"),
 
-    # ── France 24 ────────────────────────────────────────────────────
+    # France 24
     ("France 24 - World", "https://www.france24.com/en/rss", "conflict_war_peace"),
     ("France 24 - France", "https://www.france24.com/en/france/rss", "politics"),
     ("France 24 - Business", "https://www.france24.com/en/eco-tech/rss", "economy_business_finance"),
     ("France 24 - Culture", "https://www.france24.com/en/culture/rss", "arts_culture_entertainment"),
     ("France 24 - Sport", "https://www.france24.com/en/sport/rss", "sport"),
 
-    # ── ABC News (Australia) ─────────────────────────────────────────
+    # ABC Australia
     ("ABC AU - Top Stories", "https://www.abc.net.au/news/feed/2942460/rss.xml", "society"),
     ("ABC AU - World", "https://www.abc.net.au/news/feed/51120/rss.xml", "conflict_war_peace"),
     ("ABC AU - Business", "https://www.abc.net.au/news/feed/51892/rss.xml", "economy_business_finance"),
@@ -115,20 +121,20 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("ABC AU - Entertainment", "https://www.abc.net.au/news/feed/2942474/rss.xml", "arts_culture_entertainment"),
     ("ABC AU - Environment", "https://www.abc.net.au/news/feed/2942482/rss.xml", "environment"),
 
-    # ── El Mundo (Spain) ─────────────────────────────────────────────
+    # El Mundo
     ("El Mundo - Portada", "https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml", "society"),
     ("El Mundo - Internacional", "https://e00-elmundo.uecdn.es/elmundo/rss/internacional.xml", "conflict_war_peace"),
-    ("El Mundo - Economía", "https://e00-elmundo.uecdn.es/elmundo/rss/economia.xml", "economy_business_finance"),
+    ("El Mundo - Economia", "https://e00-elmundo.uecdn.es/elmundo/rss/economia.xml", "economy_business_finance"),
     ("El Mundo - Deportes", "https://e00-elmundo.uecdn.es/elmundo/rss/deportes.xml", "sport"),
     ("El Mundo - Cultura", "https://e00-elmundo.uecdn.es/elmundo/rss/cultura.xml", "arts_culture_entertainment"),
     ("El Mundo - Ciencia", "https://e00-elmundo.uecdn.es/elmundo/rss/ciencia.xml", "science_technology"),
     ("El Mundo - Salud", "https://e00-elmundo.uecdn.es/elmundo/rss/salud.xml", "health"),
 
-    # ── RTVE (Spain) ─────────────────────────────────────────────────
+    # RTVE
     ("RTVE - Noticias", "https://www.rtve.es/rss/noticias.xml", "society"),
     ("RTVE - Deportes", "https://www.rtve.es/rss/deportes.xml", "sport"),
 
-    # ── The Independent (UK) ─────────────────────────────────────────
+    # The Independent
     ("The Independent - News", "https://www.independent.co.uk/news/rss", "society"),
     ("The Independent - Sport", "https://www.independent.co.uk/sport/rss", "sport"),
     ("The Independent - Life", "https://www.independent.co.uk/life-style/rss", "lifestyle_leisure"),
@@ -136,17 +142,102 @@ RSS_SEEDS: list[tuple[str, str, str]] = [
     ("The Independent - Travel", "https://www.independent.co.uk/travel/rss", "lifestyle_leisure"),
     ("The Independent - Climate", "https://www.independent.co.uk/climate-change/rss", "environment"),
 
-    # ── Extra: Labour / Human Interest / Religion / Weather / Disaster / Crime fills ──
+    # Extra coverage for remaining IPTC branches
     ("ILO - News", "https://www.ilo.org/resource/news/rss", "labour"),
     ("AccuWeather - Top Stories", "https://rss.accuweather.com/rss/liveweather_rss.asp?metric=1&locCode=EUR", "weather"),
     ("ReliefWeb - Disasters", "https://reliefweb.int/updates/rss.xml", "disaster_accident"),
     ("UN News - Human Rights", "https://news.un.org/feed/subscribe/en/news/topic/human-rights/feed/rss.xml", "human_interest"),
     ("UN News - Peace & Security", "https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml", "conflict_war_peace"),
     ("UN News - Climate", "https://news.un.org/feed/subscribe/en/news/topic/climate-change/feed/rss.xml", "environment"),
-    ("Religion News Service", "https://religionnews.com/feed/", "religion_belief"),
-    ("Crime Reads", "https://crimereads.com/feed/", "crime_law_justice"),
+    ("Religion News Service - Latest", "https://religionnews.com/feed/", "religion_belief"),
+    ("Crime Reads - Latest", "https://crimereads.com/feed/", "crime_law_justice"),
 ]
 
 
-def get_seed_sources() -> list[tuple[str, str, str]]:
-    return RSS_SEEDS
+def _split_seed_name(display_name: str) -> tuple[str, str]:
+    if " - " in display_name:
+        medium_name, channel_name = display_name.split(" - ", 1)
+        return medium_name.strip(), channel_name.strip()
+    return display_name.strip(), display_name.strip()
+
+
+def get_seed_sources() -> list[dict[str, str]]:
+    """Return the normalized default catalog with explicit medium and channel names."""
+    normalized_sources: list[dict[str, str]] = []
+    seen_urls: set[str] = set()
+
+    for display_name, url, category in RSS_SEEDS_RAW:
+        normalized_url = url.strip()
+        if normalized_url in seen_urls:
+            continue
+
+        medium_name, channel_name = _split_seed_name(display_name)
+        normalized_sources.append(
+            {
+                "medium_name": medium_name,
+                "name": channel_name,
+                "url": normalized_url,
+                "category": category.strip().lower(),
+            }
+        )
+        seen_urls.add(normalized_url)
+
+    return normalized_sources
+
+
+def get_seed_catalog_summary() -> dict[str, int | bool]:
+    seeds = get_seed_sources()
+    covered_categories = {seed["category"] for seed in seeds}
+    media_outlets = {seed["medium_name"] for seed in seeds}
+    expected_categories = set(IPTC_CATEGORY_CODES)
+
+    return {
+        "total_channels": len(seeds),
+        "total_media_outlets": len(media_outlets),
+        "iptc_categories_covered": len(covered_categories),
+        "iptc_categories_total": len(expected_categories),
+        "covers_all_iptc_categories": covered_categories == expected_categories,
+    }
+
+
+def seed_default_sources_for_user(db: Session, owner_id: int) -> int:
+    """Ensure a user has the full default catalog without duplicating URLs."""
+    existing_urls = {
+        row[0]
+        for row in db.query(Source.url)
+        .filter(Source.created_by == owner_id)
+        .all()
+    }
+
+    sources_to_add: list[Source] = []
+    for seed in get_seed_sources():
+        if seed["url"] in existing_urls:
+            continue
+
+        sources_to_add.append(
+            Source(
+                medium_name=seed["medium_name"],
+                name=seed["name"],
+                url=seed["url"],
+                category=seed["category"],
+                is_active=True,
+                created_by=owner_id,
+            )
+        )
+        existing_urls.add(seed["url"])
+
+    if not sources_to_add:
+        return 0
+
+    try:
+        db.add_all(sources_to_add)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return len(sources_to_add)
+
+
+def iter_seed_mediums() -> Iterable[str]:
+    return (seed["medium_name"] for seed in get_seed_sources())

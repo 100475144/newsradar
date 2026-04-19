@@ -15,7 +15,12 @@ from app.modules.auth.models import User
 from app.modules.auth.schemas import UserRole
 from app.modules.sources.models import Source
 from app.modules.sources.repository import SourceRepository
-from app.modules.sources.schemas import SourceCreate, SourceResponse, SourceUpdate
+from app.modules.sources.schemas import (
+    SourceCatalogSummaryResponse,
+    SourceCreate,
+    SourceResponse,
+    SourceUpdate,
+)
 from app.modules.sources.service import SourceService
 
 
@@ -36,6 +41,18 @@ def list_sources(
     source_service: SourceService = Depends(get_source_service),
 ) -> List[Source]:
     return source_service.list_sources(current_user.id)
+
+
+@router.get(
+    "/catalog/summary",
+    response_model=SourceCatalogSummaryResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_default_catalog_summary(
+    current_user: User = Depends(get_current_active_verified_user),
+    source_service: SourceService = Depends(get_source_service),
+) -> dict[str, int | bool]:
+    return source_service.get_default_catalog_summary()
 
 
 @router.get("/{source_id}", response_model=SourceResponse, status_code=status.HTTP_200_OK)

@@ -1,8 +1,19 @@
 import React, { useCallback, useEffect, useReducer, useState } from 'react'
-import { createSource, deleteSource, getSources, updateSource } from '../api/sourcesApi'
+import {
+  createSource,
+  deleteSource,
+  getSources,
+  getSourcesCatalogSummary,
+  updateSource,
+} from '../api/sourcesApi'
 import { request } from '../api/client'
 
-const INITIAL_FORM = { name: '', url: '', category: '' }
+const INITIAL_FORM = {
+  medium_name: '',
+  name: '',
+  url: '',
+  category: '',
+}
 
 function sourcesReducer(state, action) {
   switch (action.type) {
@@ -17,13 +28,18 @@ function sourcesReducer(state, action) {
     case 'UPDATE':
       return {
         ...state,
-        items: state.items.map((s) => (s.id === action.item.id ? action.item : s)),
+        items: state.items.map((source) => (source.id === action.item.id ? action.item : source)),
       }
     case 'REMOVE':
-      return { ...state, items: state.items.filter((s) => s.id !== action.id) }
+      return { ...state, items: state.items.filter((source) => source.id !== action.id) }
     default:
       return state
   }
+}
+
+function formatCategoryLabel(category, categories) {
+  const match = categories.find((item) => item.code === category)
+  return match ? match.label : category
 }
 
 function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories }) {
@@ -43,13 +59,24 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
     <form className="source-form" onSubmit={handleSubmit}>
       <div className="field-grid">
         <label className="field">
-          <span>Name</span>
+          <span>Medium / Outlet</span>
+          <input
+            type="text"
+            name="medium_name"
+            value={formData.medium_name}
+            onChange={handleChange}
+            placeholder="BBC"
+            required
+          />
+        </label>
+        <label className="field">
+          <span>Channel name</span>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleChange}
-            placeholder="BBC News"
+            placeholder="Technology"
             required
           />
         </label>
@@ -60,7 +87,7 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
             name="url"
             value={formData.url}
             onChange={handleChange}
-            placeholder="https://feeds.bbci.co.uk/news/rss.xml"
+            placeholder="https://feeds.bbci.co.uk/news/technology/rss.xml"
             required
           />
         </label>
@@ -73,9 +100,9 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
             required
           >
             <option value="" disabled>Select a category...</option>
-            {categories.map((cat) => (
-              <option key={cat.code} value={cat.code}>
-                {cat.label}
+            {categories.map((category) => (
+              <option key={category.code} value={category.code}>
+                {category.label}
               </option>
             ))}
           </select>
@@ -96,11 +123,15 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
   )
 }
 
-function SourceRow({ source, onEdit, onDelete, onToggle, busy }) {
+function SourceRow({ source, onEdit, onDelete, onToggle, busy, categories }) {
   return (
     <div className="source-row">
       <div className="source-row__info">
-        <strong className="source-row__name">{source.name}</strong>
+        <strong className="source-row__name">
+          {source.medium_name} - {source.name}
+        </strong>
+        <span className="source-row__url">Medium: {source.medium_name}</span>
+        <span className="source-row__url">Channel: {source.name}</span>
         <a
           className="source-row__url"
           href={source.url}
@@ -110,7 +141,9 @@ function SourceRow({ source, onEdit, onDelete, onToggle, busy }) {
           {source.url}
         </a>
         {source.category ? (
-          <span className="source-row__url">Category: {source.category}</span>
+          <span className="source-row__url">
+            Category: {formatCategoryLabel(source.category, categories)}
+          </span>
         ) : null}
       </div>
 
@@ -166,18 +199,21 @@ export default function SourcesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [categories, setCategories] = useState([])
+  const [catalogSummary, setCatalogSummary] = useState(null)
 
   const load = useCallback(async () => {
     dispatch({ type: 'LOADING' })
     try {
-      const [items, cats] = await Promise.all([
+      const [items, catalog, cats] = await Promise.all([
         getSources(),
+        getSourcesCatalogSummary(),
         request('/alerts/categories'),
       ])
       dispatch({ type: 'LOADED', items })
+      setCatalogSummary(catalog)
       setCategories(cats)
-    } catch (err) {
-      dispatch({ type: 'ERROR', error: err.message })
+    } catch (error) {
+      dispatch({ type: 'ERROR', error: error.message })
     }
   }, [])
 
@@ -192,8 +228,8 @@ export default function SourcesPage() {
       const created = await createSource(formData)
       dispatch({ type: 'ADD', item: created })
       setShowForm(false)
-    } catch (err) {
-      setFormError(err.message)
+    } catch (error) {
+      setFormError(error.message)
     } finally {
       setIsSubmitting(false)
     }
@@ -209,8 +245,8 @@ export default function SourcesPage() {
       })
       dispatch({ type: 'UPDATE', item: updated })
       setEditing(null)
-    } catch (err) {
-      setFormError(err.message)
+    } catch (error) {
+      setFormError(error.message)
     } finally {
       setIsSubmitting(false)
     }
@@ -222,8 +258,8 @@ export default function SourcesPage() {
     try {
       await deleteSource(id)
       dispatch({ type: 'REMOVE', id })
-    } catch (err) {
-      dispatch({ type: 'ERROR', error: err.message })
+    } catch (error) {
+      dispatch({ type: 'ERROR', error: error.message })
     } finally {
       setBusyId(null)
     }
@@ -233,14 +269,15 @@ export default function SourcesPage() {
     setBusyId(source.id)
     try {
       const updated = await updateSource(source.id, {
+        medium_name: source.medium_name,
         name: source.name,
         url: source.url,
         category: source.category,
         is_active: !source.is_active,
       })
       dispatch({ type: 'UPDATE', item: updated })
-    } catch (err) {
-      dispatch({ type: 'ERROR', error: err.message })
+    } catch (error) {
+      dispatch({ type: 'ERROR', error: error.message })
     } finally {
       setBusyId(null)
     }
@@ -270,10 +307,41 @@ export default function SourcesPage() {
         <p className="eyebrow">RSS Feeds</p>
         <h1>Your sources</h1>
         <p>
-          Manage the RSS feeds that NewsRadar monitors. Active sources are crawled
-          automatically to bring new articles into your dashboard.
+          Every user receives the default NewsRadar catalog on first access, and you
+          can also create extra RSS channels explicitly linked to a media outlet and
+          an IPTC category.
         </p>
       </div>
+
+      {catalogSummary ? (
+        <div className="panel-card">
+          <h2>Default catalog</h2>
+          <dl className="detail-list">
+            <div>
+              <dt>Initial channels</dt>
+              <dd>{catalogSummary.total_channels}</dd>
+            </div>
+            <div>
+              <dt>Media outlets</dt>
+              <dd>{catalogSummary.total_media_outlets}</dd>
+            </div>
+            <div>
+              <dt>IPTC coverage</dt>
+              <dd>
+                {catalogSummary.iptc_categories_covered} / {catalogSummary.iptc_categories_total}
+              </dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>
+                {catalogSummary.covers_all_iptc_categories
+                  ? 'All first-level IPTC categories covered'
+                  : 'Coverage incomplete'}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
 
       <div className="sources-toolbar">
         {!showForm && !editing ? (
@@ -317,7 +385,12 @@ export default function SourcesPage() {
               <div key={source.id} className="panel-card">
                 <h2>Edit source</h2>
                 <SourceForm
-                  initial={{ name: source.name, url: source.url, category: source.category || '' }}
+                  initial={{
+                    medium_name: source.medium_name,
+                    name: source.name,
+                    url: source.url,
+                    category: source.category || '',
+                  }}
                   onSave={handleUpdate}
                   onCancel={cancelForm}
                   isSubmitting={isSubmitting}
@@ -333,6 +406,7 @@ export default function SourcesPage() {
                 onDelete={handleDelete}
                 onToggle={handleToggle}
                 busy={busyId === source.id}
+                categories={categories}
               />
             ),
           )}

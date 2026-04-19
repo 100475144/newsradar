@@ -31,7 +31,7 @@ class News(Base):
     language: Mapped[str | None] = mapped_column(String(10), nullable=True)
     author: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    external_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(

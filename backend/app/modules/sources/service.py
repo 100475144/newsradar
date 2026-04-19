@@ -2,6 +2,7 @@
 
 from typing import List
 
+from app.core.seed_sources import get_seed_catalog_summary
 from app.modules.sources.models import Source
 from app.modules.sources.repository import SourceRepository
 from app.modules.sources.schemas import SourceCreate, SourceUpdate
@@ -13,6 +14,9 @@ class SourceService:
 
 	def list_sources(self, owner_id: int) -> List[Source]:
 		return self.repository.list_by_owner(owner_id)
+
+	def get_default_catalog_summary(self) -> dict[str, int | bool]:
+		return get_seed_catalog_summary()
 
 	def create_source(self, source_data: SourceCreate, owner_id: int) -> Source:
 		existing_source = self.repository.get_by_url_and_owner(str(source_data.url), owner_id)

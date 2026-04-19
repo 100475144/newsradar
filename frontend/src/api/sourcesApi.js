@@ -4,6 +4,10 @@ export function getSources() {
   return request('/sources')
 }
 
+export function getSourcesCatalogSummary() {
+  return request('/sources/catalog/summary')
+}
+
 export function createSource(payload) {
   return request('/sources', {
     method: 'POST',

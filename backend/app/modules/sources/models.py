@@ -14,6 +14,7 @@ class Source(Base):
 	__table_args__ = (UniqueConstraint("url", "created_by", name="uq_sources_url_created_by"),)
 
 	id = Column(Integer, primary_key=True, index=True)
+	medium_name = Column(String(120), nullable=False, index=True)
 	name = Column(String, nullable=False)
 	url = Column(String, nullable=False, index=True)
 	category = Column(String(255), nullable=True, index=True)

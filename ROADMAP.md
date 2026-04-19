@@ -4,12 +4,12 @@
 | Sprint 0     | Preparación de infraestructura | [completed] |
 | Sprint 1     | Usuarios y autenticación       | [completed] |
 | Sprint 2     | Gestión de fuentes RSS         | [completed] |
-| Sprint 3     | Gestión de alertas             | [ongoing]   |
-| Sprint 4     | Monitorización de noticias     | [ongoing]   |
-| Sprint 5     | Notificaciones + API REST      | [ongoing]   |
-| Sprint 6     | Dashboard y visualización      |             |
-| Sprint 7     | Testing, CI/CD, calidad        |             |
-| Sprint 8     | Documentación                  |             |
+| Sprint 3     | Gestión de alertas             | [completed] |
+| Sprint 4     | Monitorización de noticias     | [completed] |
+| Sprint 5     | Notificaciones + API REST      | [completed] |
+| Sprint 6     | Dashboard y visualización      | [ongoing]   |
+| Sprint 7     | Testing, CI/CD, calidad        | [ongoing]   |
+| Sprint 8     | Documentación                  | [ongoing]   |
 | Verificación | Pruebas finales                |             |
 
 

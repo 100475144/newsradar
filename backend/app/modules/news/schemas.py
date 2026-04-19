@@ -18,7 +18,7 @@ class NewsBase(BaseModel):
 
 class NewsCreateInternal(NewsBase):
     source_id: Optional[int] = None
-    external_id: Optional[str] = Field(default=None, max_length=255)
+    external_id: Optional[str] = None
     content_hash: Optional[str] = Field(default=None, max_length=64)
 
 

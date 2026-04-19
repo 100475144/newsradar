@@ -51,6 +51,13 @@ function parseExpandedKeywords(raw) {
     .filter(Boolean)
 }
 
+function formatSourceLabel(source) {
+  if (!source.medium_name) {
+    return source.name
+  }
+  return `${source.medium_name} - ${source.name}`
+}
+
 function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories, sources }) {
   const [formData, setFormData] = useState(
     initial
@@ -274,7 +281,7 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
                   checked={formData.source_ids.includes(src.id)}
                   onChange={() => handleSourceToggle(src.id)}
                 />
-                <span style={{ fontSize: '0.85rem' }}>{src.name}</span>
+                <span style={{ fontSize: '0.85rem' }}>{formatSourceLabel(src)}</span>
               </label>
             ))}
           </div>
