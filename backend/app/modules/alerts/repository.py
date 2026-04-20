@@ -40,18 +40,21 @@ class AlertRepository:
         self.db.refresh(alert)
         return alert
 
-    def list_for_user(self, user_id: int) -> list[Alert]:
+    def list_all(self) -> list[Alert]:
+        return self.db.query(Alert).order_by(Alert.id.desc()).all()
+
+    def list_active(self) -> list[Alert]:
         return (
             self.db.query(Alert)
-            .filter(Alert.created_by == user_id)
+            .filter(Alert.is_active == True)  # noqa: E712
             .order_by(Alert.id.desc())
             .all()
         )
 
-    def list_active(self) -> list[Alert]:
-        return self.db.query(Alert).filter(Alert.is_active == True).all()  # noqa: E712
+    def get_by_id(self, alert_id: int) -> Alert | None:
+        return self.db.query(Alert).filter(Alert.id == alert_id).first()
 
-    def get_by_id_for_user(self, alert_id: int, user_id: int) -> Alert | None:
+    def get_by_id_created_by(self, alert_id: int, user_id: int) -> Alert | None:
         return (
             self.db.query(Alert)
             .filter(Alert.id == alert_id, Alert.created_by == user_id)

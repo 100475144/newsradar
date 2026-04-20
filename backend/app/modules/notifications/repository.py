@@ -9,11 +9,17 @@ class NotificationRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, *, title: str, message: str, created_by: int) -> Notification:
+    def create(self, *, title: str, message: str, user_id: int, alert_id: int, news_id: int) -> Notification:
+        existing = self.get_by_delivery_key(user_id=user_id, alert_id=alert_id, news_id=news_id)
+        if existing:
+            return existing
+
         notification = Notification(
             title=title,
             message=message,
-            created_by=created_by,
+            user_id=user_id,
+            alert_id=alert_id,
+            news_id=news_id,
             is_read=False,
         )
         self.db.add(notification)
@@ -21,10 +27,21 @@ class NotificationRepository:
         self.db.refresh(notification)
         return notification
 
+    def get_by_delivery_key(self, *, user_id: int, alert_id: int, news_id: int) -> Notification | None:
+        return (
+            self.db.query(Notification)
+            .filter(
+                Notification.user_id == user_id,
+                Notification.alert_id == alert_id,
+                Notification.news_id == news_id,
+            )
+            .first()
+        )
+
     def list_for_user(self, user_id: int) -> list[Notification]:
         return (
             self.db.query(Notification)
-            .filter(Notification.created_by == user_id)
+            .filter(Notification.user_id == user_id)
             .order_by(Notification.id.desc())
             .all()
         )
@@ -34,7 +51,7 @@ class NotificationRepository:
             self.db.query(Notification)
             .filter(
                 Notification.id == notification_id,
-                Notification.created_by == user_id,
+                Notification.user_id == user_id,
             )
             .first()
         )
@@ -48,4 +65,3 @@ class NotificationRepository:
     def delete(self, notification: Notification) -> None:
         self.db.delete(notification)
         self.db.commit()
-        

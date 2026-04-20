@@ -21,22 +21,20 @@ class NewsService:
         source_id: int | None = None,
         category: str | None = None,
     ):
-        items = self.repository.list_for_user(
-            user_id=user_id,
+        items = self.repository.list(
             skip=skip,
             limit=limit,
             source_id=source_id,
             category=category,
         )
-        total = self.repository.count_for_user(
-            user_id=user_id,
+        total = self.repository.count(
             source_id=source_id,
             category=category,
         )
         return {"items": items, "total": total}
 
-    def get_news(self, news_id: int, user_id: int):
-        return self.repository.get_by_id_for_user(news_id, user_id)
+    def get_news(self, news_id: int):
+        return self.repository.get_by_id(news_id)
 
     def create_news_from_crawler(self, payload: NewsCreateInternal) -> News:
         normalized_link = self._normalize_link(payload.link)

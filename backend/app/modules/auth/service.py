@@ -6,7 +6,6 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
-from app.core.seed_sources import seed_default_sources_for_user
 from app.modules.auth.repository import UserRepository
 from app.modules.auth.schemas import LoginResponse, UserCreate
 from app.modules.notifications.email_utils import send_verification_email

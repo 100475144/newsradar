@@ -1,8 +1,10 @@
 """Emparejamiento entre alertas y noticias.
 
-Mejoras:
+Reglas:
 - Respeta source_ids: si la alerta tiene fuentes específicas, solo matchea noticias de esas fuentes.
 - Clasifica la noticia con la categoría IPTC de la alerta si hay match.
+- Genera notificaciones para TODOS los usuarios activos/verificados del sistema,
+  no solo para el creador de la alerta.
 """
 
 from datetime import datetime, timezone
@@ -27,20 +29,20 @@ def _build_news_text(news) -> str:
 def _build_terms(alert: Alert) -> list[str]:
     terms = [alert.keyword]
     terms.extend(alert.expanded_keywords or [])
-    cleaned = []
-    seen = set()
+
+    cleaned: list[str] = []
+    seen: set[str] = set()
 
     for term in terms:
-        term = (term or "").strip().lower()
-        if term and term not in seen:
-            seen.add(term)
-            cleaned.append(term)
+        normalized = (term or "").strip().lower()
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            cleaned.append(normalized)
 
     return cleaned
 
 
 def _matches(alert: Alert, news, news_text: str) -> bool:
-    # Check source_ids filter: if alert specifies sources, only match those
     alert_source_ids = alert.source_ids or []
     if alert_source_ids:
         news_source_id = getattr(news, "source_id", None)
@@ -73,6 +75,18 @@ def _build_notification_message(alert: Alert, news) -> str:
         f"Resumen: {summary}\n"
         f"Enlace: {link}"
     )
+
+
+def _list_notification_recipients(db) -> list[User]:
+    query = db.query(User)
+
+    if hasattr(User, "is_active"):
+        query = query.filter(User.is_active == True)  # noqa: E712
+
+    if hasattr(User, "is_verified"):
+        query = query.filter(User.is_verified == True)  # noqa: E712
+
+    return query.all()
 
 
 def resolve_news_classification(
@@ -141,28 +155,32 @@ def process_alerts_for_news(db, news) -> int:
         db.commit()
         db.refresh(news)
 
+    recipients = _list_notification_recipients(db)
+    if not recipients:
+        return 0
+
     created = 0
 
     for alert in matching_alerts:
-
         title = _build_notification_title(alert)
         message = _build_notification_message(alert, news)
 
         if alert.notify_in_app:
-            notification_repo.create(
-                title=title,
-                message=message,
-                created_by=alert.created_by,
-            )
+            for user in recipients:
+                notification_repo.create(
+                    title=title,
+                    message=message,
+                    created_by=user.id,
+                )
 
         if alert.notify_email:
-            user = db.query(User).filter(User.id == alert.created_by).first()
-            if user and getattr(user, "email", None):
-                send_email_notification(
-                    to_email=user.email,
-                    subject=title,
-                    body=message,
-                )
+            for user in recipients:
+                if getattr(user, "email", None):
+                    send_email_notification(
+                        to_email=user.email,
+                        subject=title,
+                        body=message,
+                    )
 
         created += 1
 
