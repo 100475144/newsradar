@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+psycopg://user:password@db:5432/news_db
+      - DATABASE_URL=postgresql+psycopg://user:password@dev_db:5432/news_db
       - CRAWLER_INTERVAL_SECONDS=300
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
@@ -28,7 +28,7 @@ services:
       start_period: 1s
       start_interval: 0s
 
-  db:
+  dev_db:
     image: postgres:18.3-trixie
     environment:
       POSTGRES_USER: user
