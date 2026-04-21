@@ -28,7 +28,7 @@ class AlertService:
         return alert
 
     def create_alert(self, data, user_id: int) -> Alert:
-        if self.repository.count_created_by(user_id) >= self.MAX_ALERTS:
+        if self.repository.count_for_user(user_id) >= self.MAX_ALERTS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="A manager can only create up to 20 alerts.",
@@ -71,6 +71,14 @@ class AlertService:
             fields["is_active"] = bool(data.is_active)
 
         return self.repository.update(alert, **fields)
+    
+    def activate_alert(self, alert_id: int) -> Alert:
+        alert = self.get_alert(alert_id)
+        return self.repository.update(alert, is_active=True)
+
+    def deactivate_alert(self, alert_id: int) -> Alert:
+        alert = self.get_alert(alert_id)
+        return self.repository.update(alert, is_active=False)
 
     def delete_alert(self, alert_id: int) -> None:
         alert = self.get_alert(alert_id)

@@ -17,13 +17,12 @@ class CrawlerService:
         self.news_service = news_service
         self.source_repository = SourceRepository(db)
 
-    def get_active_sources(self, user_id: int) -> list[SourceStub]:
-        user_sources = self.source_repository.list_by_owner(user_id)
-        active_sources = [source for source in user_sources if source.is_active]
-
+    def get_active_sources(self) -> list[SourceStub]:
+        active_sources = self.source_repository.list_active()
         return [
             SourceStub(
                 id=source.id,
+                medium_name=source.medium_name,
                 name=source.name,
                 url=source.url,
                 category=getattr(source, "category", None),
@@ -32,9 +31,9 @@ class CrawlerService:
             for source in active_sources
         ]
 
-    def crawl_all_active_sources(self, user_id: int) -> list[CrawlResult]:
+    def crawl_all_active_sources(self) -> list[CrawlResult]:
         results: list[CrawlResult] = []
-        for source in self.get_active_sources(user_id):
+        for source in self.get_active_sources():
             results.append(self.crawl_source(source))
         return results
 

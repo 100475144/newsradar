@@ -25,12 +25,6 @@ class AuthService:
         hashed_password = get_password_hash(user_data.password)
         user = self.repository.create(user_data, hashed_password)
 
-        try:
-            seeded_sources = seed_default_sources_for_user(self.repository.db, user.id)
-            logger.info("Seeded %d default RSS sources for user %s", seeded_sources, user.email)
-        except Exception:
-            logger.exception("Default RSS catalog could not be seeded for %s", user.email)
-
         # Generate verification token and send email
         token_obj = self.repository.create_verification_token(user.id)
         email_sent = send_verification_email(user.email, token_obj.token)

@@ -15,7 +15,6 @@ class NewsService:
     def list_news(
         self,
         *,
-        user_id: int,
         skip: int = 0,
         limit: int = 20,
         source_id: int | None = None,

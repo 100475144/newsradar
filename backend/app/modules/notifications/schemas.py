@@ -11,7 +11,8 @@ class NotificationBase(BaseModel):
 
 
 class NotificationCreate(NotificationBase):
-    pass
+    alert_id: int
+    news_id: int
 
 
 class NotificationUpdate(BaseModel):
@@ -21,7 +22,9 @@ class NotificationUpdate(BaseModel):
 class NotificationResponse(NotificationBase):
     id: int
     is_read: bool
-    created_by: int
+    user_id: int
+    alert_id: int
+    news_id: int
 
     model_config = ConfigDict(from_attributes=True)
     

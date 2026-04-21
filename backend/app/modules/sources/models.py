@@ -10,7 +10,7 @@ class Source(Base):
 	"""RSS source owned by a user."""
 
 	__tablename__ = "sources"
-	__table_args__ = (UniqueConstraint("url", "created_by", name="uq_sources_url_created_by"),)
+	__table_args__ = (UniqueConstraint("url", name="uq_sources_url"),)
 
 	id = Column(Integer, primary_key=True, index=True)
 	medium_name = Column(String(120), nullable=False, index=True)

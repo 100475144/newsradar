@@ -40,7 +40,7 @@ def list_sources(
     current_user: User = Depends(get_current_active_verified_user),
     source_service: SourceService = Depends(get_source_service),
 ) -> List[Source]:
-    return source_service.list_sources(current_user.id)
+    return source_service.list_sources()
 
 
 @router.get(
@@ -62,7 +62,7 @@ def read_source(
     source_service: SourceService = Depends(get_source_service),
 ) -> Source:
     try:
-        return source_service.get_source(source_id, current_user.id)
+        return source_service.get_source(source_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -76,7 +76,7 @@ def create_source(
     source_service: SourceService = Depends(get_source_service),
 ) -> Source:
     try:
-        return source_service.create_source(source_data, current_user.id)
+        return source_service.create_source(source_data)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -89,7 +89,7 @@ def update_source(
     source_service: SourceService = Depends(get_source_service),
 ) -> Source:
     try:
-        return source_service.update_source(source_id, current_user.id, source_data)
+        return source_service.update_source(source_id, source_data)
     except ValueError as exc:
         message = str(exc)
         status_code = status.HTTP_404_NOT_FOUND if message == "Source not found." else status.HTTP_400_BAD_REQUEST
@@ -103,7 +103,7 @@ def delete_source(
     source_service: SourceService = Depends(get_source_service),
 ) -> None:
     try:
-        source_service.delete_source(source_id, current_user.id)
+        source_service.delete_source(source_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -115,7 +115,7 @@ def activate_source(
     source_service: SourceService = Depends(get_source_service),
 ) -> Source:
     try:
-        return source_service.activate_source(source_id, current_user.id)
+        return source_service.activate_source(source_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -127,6 +127,6 @@ def deactivate_source(
     source_service: SourceService = Depends(get_source_service),
 ) -> Source:
     try:
-        return source_service.deactivate_source(source_id, current_user.id)
+        return source_service.deactivate_source(source_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
