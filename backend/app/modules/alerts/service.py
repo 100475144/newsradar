@@ -18,8 +18,8 @@ class AlertService:
     def list_active_alerts(self) -> list[Alert]:
         return self.repository.list_active()
 
-    def get_alert(self, alert_id: int) -> Alert:
-        alert = self.repository.get_by_id(alert_id)
+    def get_alert(self, alert_id: int, user_id: int) -> Alert:
+        alert = self.repository.get_by_id_created_by(alert_id, user_id)
         if not alert:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -37,7 +37,11 @@ class AlertService:
         return self.repository.create(
             name=data.name.strip(),
             keyword=data.keyword.strip(),
-            expanded_keywords=[item.strip() for item in (data.expanded_keywords or []) if item and item.strip()],
+            expanded_keywords=[
+                item.strip()
+                for item in (data.expanded_keywords or [])
+                if item and item.strip()
+            ],
             category=data.category,
             source_ids=data.source_ids or [],
             notify_in_app=bool(data.notify_in_app),
@@ -45,8 +49,8 @@ class AlertService:
             created_by=user_id,
         )
 
-    def update_alert(self, alert_id: int, data) -> Alert:
-        alert = self.get_alert(alert_id)
+    def update_alert(self, alert_id: int, data, user_id: int) -> Alert:
+        alert = self.get_alert(alert_id, user_id)
 
         fields = {}
         if hasattr(data, "name") and data.name is not None:
@@ -71,15 +75,15 @@ class AlertService:
             fields["is_active"] = bool(data.is_active)
 
         return self.repository.update(alert, **fields)
-    
-    def activate_alert(self, alert_id: int) -> Alert:
-        alert = self.get_alert(alert_id)
+
+    def activate_alert(self, alert_id: int, user_id: int) -> Alert:
+        alert = self.get_alert(alert_id, user_id)
         return self.repository.update(alert, is_active=True)
 
-    def deactivate_alert(self, alert_id: int) -> Alert:
-        alert = self.get_alert(alert_id)
+    def deactivate_alert(self, alert_id: int, user_id: int) -> Alert:
+        alert = self.get_alert(alert_id, user_id)
         return self.repository.update(alert, is_active=False)
 
-    def delete_alert(self, alert_id: int) -> None:
-        alert = self.get_alert(alert_id)
+    def delete_alert(self, alert_id: int, user_id: int) -> None:
+        alert = self.get_alert(alert_id, user_id)
         self.repository.delete(alert)

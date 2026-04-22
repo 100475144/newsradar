@@ -17,10 +17,8 @@ from app.modules.alerts.service import AlertService
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserRole
 
-
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
-# Dependency shortcuts
 _gestor_or_admin = require_role(UserRole.ADMIN, UserRole.GESTOR)
 
 
@@ -28,14 +26,13 @@ def get_alert_service(db: Session = Depends(get_db)) -> AlertService:
     return AlertService(AlertRepository(db))
 
 
-# ── Read endpoints (any authenticated user) ──────────────────────────
-
 @router.get("/", response_model=list[AlertResponse])
 def list_alerts(
     current_user: User = Depends(get_current_active_verified_user),
     service: AlertService = Depends(get_alert_service),
 ):
     return service.list_alerts(current_user.id)
+
 
 @router.get("/categories")
 def list_iptc_categories():
@@ -61,7 +58,7 @@ def get_alert(
     current_user: User = Depends(get_current_active_verified_user),
     service: AlertService = Depends(get_alert_service),
 ):
-    return service.get_alert(alert_id)
+    return service.get_alert(alert_id, current_user.id)
 
 
 @router.post("/", response_model=AlertResponse)
@@ -80,7 +77,7 @@ def update_alert(
     current_user: User = Depends(_gestor_or_admin),
     service: AlertService = Depends(get_alert_service),
 ):
-    return service.update_alert(alert_id, payload)
+    return service.update_alert(alert_id, payload, current_user.id)
 
 
 @router.delete("/{alert_id}")
@@ -89,7 +86,7 @@ def delete_alert(
     current_user: User = Depends(_gestor_or_admin),
     service: AlertService = Depends(get_alert_service),
 ):
-    return service.delete_alert(alert_id)
+    return service.delete_alert(alert_id, current_user.id)
 
 
 @router.patch("/{alert_id}/activate", response_model=AlertResponse)
@@ -98,7 +95,7 @@ def activate_alert(
     current_user: User = Depends(_gestor_or_admin),
     service: AlertService = Depends(get_alert_service),
 ):
-    return service.activate_alert(alert_id)
+    return service.activate_alert(alert_id, current_user.id)
 
 
 @router.patch("/{alert_id}/deactivate", response_model=AlertResponse)
@@ -107,4 +104,4 @@ def deactivate_alert(
     current_user: User = Depends(_gestor_or_admin),
     service: AlertService = Depends(get_alert_service),
 ):
-    return service.deactivate_alert(alert_id)
+    return service.deactivate_alert(alert_id, current_user.id)

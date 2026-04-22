@@ -3,8 +3,7 @@
 Reglas:
 - Respeta source_ids: si la alerta tiene fuentes específicas, solo matchea noticias de esas fuentes.
 - Clasifica la noticia con la categoría IPTC de la alerta si hay match.
-- Genera notificaciones para TODOS los usuarios activos/verificados del sistema,
-  no solo para el creador de la alerta.
+- Genera notificaciones solo para el propietario de la alerta.
 """
 
 from __future__ import annotations
@@ -12,7 +11,6 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.modules.alerts.models import Alert
-from app.modules.auth.models import User
 from app.modules.news.models import News
 from app.modules.notifications.email_utils import send_email_notification
 from app.modules.notifications.repository import NotificationRepository
@@ -83,13 +81,6 @@ def process_alerts_for_news(db: Session, news: News) -> int:
         .all()
     )
 
-    recipients = (
-        db.query(User)
-        .filter(User.is_active.is_(True), User.is_verified.is_(True))
-        .order_by(User.id.asc())
-        .all()
-    )
-
     if not alerts:
         return 0
 
@@ -97,7 +88,6 @@ def process_alerts_for_news(db: Session, news: News) -> int:
     if not matching_alerts:
         return 0
 
-    # Reclasificación de la noticia según alertas que hacen match
     selected_category, classification_origin = _resolve_news_classification(
         current_category=getattr(news, "category", None),
         current_origin=getattr(news, "classification_origin", None),
@@ -115,9 +105,6 @@ def process_alerts_for_news(db: Session, news: News) -> int:
         db.commit()
         db.refresh(news)
 
-    if not recipients:
-        return 0
-
     source_name = None
     if news.source_id is not None:
         source = db.query(Source).filter(Source.id == news.source_id).first()
@@ -127,38 +114,35 @@ def process_alerts_for_news(db: Session, news: News) -> int:
     created_count = 0
 
     for alert in matching_alerts:
+        owner = alert.owner
+        if owner is None or not owner.is_active or not owner.is_verified:
+            continue
+
         title = f"News match: {alert.name}"
         message = news.title if not source_name else f"{news.title} ({source_name})"
 
-        for user in recipients:
-            existing_notification = notification_repo.get_by_delivery_key(
-                user_id=user.id,
+        existing_notification = notification_repo.get_by_delivery_key(
+            user_id=owner.id,
+            alert_id=alert.id,
+            news_id=news.id,
+        )
+
+        if alert.notify_in_app and existing_notification is None:
+            notification = notification_repo.create(
+                title=title,
+                message=message,
+                user_id=owner.id,
                 alert_id=alert.id,
                 news_id=news.id,
             )
+            if notification is not None:
+                created_count += 1
 
-            notification = existing_notification
-            if existing_notification is None:
-                notification = notification_repo.create(
-                    title=title,
-                    message=message,
-                    user_id=user.id,
-                    alert_id=alert.id,
-                    news_id=news.id,
-                )
-                if notification is not None:
-                    created_count += 1
-
-            # Email: solo enviar una vez por usuario+alerta+noticia
-            if (
-                alert.notify_email
-                and user.email
-                and existing_notification is None
-            ):
-                send_email_notification(
-                    to_email=user.email,
-                    subject=title,
-                    body=f"{message}\n\n{news.link}",
-                )
+        if alert.notify_email and owner.email and existing_notification is None:
+            send_email_notification(
+                to_email=owner.email,
+                subject=title,
+                body=f"{message}\n\n{news.link}",
+            )
 
     return created_count
