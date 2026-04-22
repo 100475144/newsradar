@@ -1,5 +1,6 @@
 """Repositorio del módulo alerts: acceso a datos de alertas."""
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.modules.alerts.models import Alert
@@ -70,3 +71,12 @@ class AlertRepository:
     def delete(self, alert: Alert) -> None:
         self.db.delete(alert)
         self.db.commit()
+
+    def count_by_category(self) -> list[dict]:
+        rows = (
+            self.db.query(Alert.category, func.count(Alert.id).label("count"))
+            .group_by(Alert.category)
+            .order_by(func.count(Alert.id).desc())
+            .all()
+        )
+        return [{"category": r.category, "count": r.count} for r in rows]

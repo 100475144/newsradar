@@ -43,3 +43,7 @@ export function deactivateAlert(id) {
 export function getAlertSuggestions(keyword) {
   return request(`/alerts/suggestions/${encodeURIComponent(keyword)}`)
 }
+
+export function getAlertsStats() {
+  return request('/alerts/stats')
+}

@@ -12,3 +12,14 @@ export function getNews({ skip = 0, limit = 20, sourceId, category } = {}) {
 export function getNewsById(id) {
   return request(`/news/${id}`)
 }
+
+export function getNewsStats() {
+  return request('/news/stats')
+}
+
+export function getNewsWordcloud({ category, limit = 50 } = {}) {
+  const params = new URLSearchParams()
+  if (category) params.set('category', category)
+  params.set('limit', limit)
+  return request(`/news/wordcloud?${params.toString()}`)
+}
