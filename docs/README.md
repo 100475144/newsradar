@@ -15,6 +15,7 @@ docs/
 ├── api-design.md
 ├── database-design.md
 ├── deployment.md
+├── demo.md
 ├── sprints.md
 └── decisions/
 
