@@ -1,7 +1,8 @@
 """Emparejamiento entre alertas y noticias.
 
 Reglas:
-- Respeta source_ids: si la alerta tiene fuentes específicas, solo matchea noticias de esas fuentes.
+- Si la alerta tiene source_ids, solo matchea noticias de esas fuentes.
+- Si la alerta no tiene source_ids, matchea noticias de fuentes de la misma categoría IPTC.
 - Clasifica la noticia con la categoría IPTC de la alerta si hay match.
 - Genera notificaciones solo para el propietario de la alerta.
 """
@@ -21,12 +22,22 @@ def _normalize(value: str | None) -> str:
     return (value or "").strip().lower()
 
 
-def _news_matches_alert(news: News, alert: Alert) -> bool:
+def _news_matches_alert(news: News, alert: Alert, source: Source | None) -> bool:
     if not alert.is_active:
         return False
 
-    if alert.source_ids and news.source_id not in set(alert.source_ids):
-        return False
+    if alert.source_ids:
+        if news.source_id not in set(alert.source_ids):
+            return False
+    else:
+        if source is None:
+            return False
+
+        source_category = (source.category or "").strip().lower()
+        alert_category = (alert.category or "").strip().lower()
+
+        if source_category != alert_category:
+            return False
 
     haystack = " ".join(
         part for part in [news.title, news.summary or "", news.author or ""] if part
@@ -84,7 +95,13 @@ def process_alerts_for_news(db: Session, news: News) -> int:
     if not alerts:
         return 0
 
-    matching_alerts = [alert for alert in alerts if _news_matches_alert(news, alert)]
+    source = None
+    if news.source_id is not None:
+        source = db.query(Source).filter(Source.id == news.source_id).first()
+
+    matching_alerts = [
+        alert for alert in alerts if _news_matches_alert(news, alert, source)
+    ]
     if not matching_alerts:
         return 0
 
@@ -105,10 +122,7 @@ def process_alerts_for_news(db: Session, news: News) -> int:
         db.commit()
         db.refresh(news)
 
-    source_name = None
-    if news.source_id is not None:
-        source = db.query(Source).filter(Source.id == news.source_id).first()
-        source_name = source.name if source else None
+    source_name = source.name if source else None
 
     notification_repo = NotificationRepository(db)
     created_count = 0
