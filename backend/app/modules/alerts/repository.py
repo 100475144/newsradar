@@ -39,6 +39,14 @@ class AlertRepository:
         self.db.commit()
         self.db.refresh(alert)
         return alert
+    
+    def list_for_user(self, user_id: int) -> list[Alert]:
+        return (
+            self.db.query(Alert)
+            .filter(Alert.created_by == user_id)
+            .order_by(Alert.id.desc())
+            .all()
+        )
 
     def list_all(self) -> list[Alert]:
         return self.db.query(Alert).order_by(Alert.id.desc()).all()

@@ -30,6 +30,13 @@ def get_alert_service(db: Session = Depends(get_db)) -> AlertService:
 
 # ── Read endpoints (any authenticated user) ──────────────────────────
 
+@router.get("/", response_model=list[AlertResponse])
+def list_alerts(
+    current_user: User = Depends(get_current_active_verified_user),
+    service: AlertService = Depends(get_alert_service),
+):
+    return service.list_alerts(current_user.id)
+
 @router.get("/categories")
 def list_iptc_categories():
     return [

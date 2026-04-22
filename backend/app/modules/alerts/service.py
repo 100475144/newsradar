@@ -12,8 +12,8 @@ class AlertService:
     def __init__(self, repository: AlertRepository):
         self.repository = repository
 
-    def list_alerts(self) -> list[Alert]:
-        return self.repository.list_all()
+    def list_alerts(self, user_id: int):
+        return self.repository.list_for_user(user_id)
 
     def list_active_alerts(self) -> list[Alert]:
         return self.repository.list_active()
