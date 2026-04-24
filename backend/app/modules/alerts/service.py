@@ -44,6 +44,7 @@ class AlertService:
             ],
             category=data.category,
             source_ids=data.source_ids or [],
+            cron_expression=data.cron_expression,
             notify_in_app=bool(data.notify_in_app),
             notify_email=bool(data.notify_email),
             created_by=user_id,

@@ -9,6 +9,7 @@ Reglas:
 
 from __future__ import annotations
 
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.modules.alerts.models import Alert
@@ -132,8 +133,21 @@ def process_alerts_for_news(db: Session, news: News) -> int:
         if owner is None or not owner.is_active or not owner.is_verified:
             continue
 
-        title = f"News match: {alert.name}"
-        message = news.title if not source_name else f"{news.title} ({source_name})"
+        now = datetime.now().strftime("%d/%m/%Y %H:%M")
+        title = f"Actualización de {alert.name} en {now}"
+
+        published = (
+            news.published_at.strftime("%d/%m/%Y %H:%M")
+            if getattr(news, "published_at", None)
+            else now
+        )
+        summary = getattr(news, "summary", None) or "Sin resumen disponible."
+        message = (
+            f"Fuente: {source_name or 'Desconocida'}\n"
+            f"Fecha: {published}\n"
+            f"Título: {news.title}\n\n"
+            f"{summary}"
+        )
 
         existing_notification = notification_repo.get_by_delivery_key(
             user_id=owner.id,
@@ -141,7 +155,12 @@ def process_alerts_for_news(db: Session, news: News) -> int:
             news_id=news.id,
         )
 
-        if alert.notify_in_app and existing_notification is None:
+        # Si ya existe el registro esta noticia ya fue procesada para esta alerta,
+        # saltamos ambos canales para evitar duplicados
+        if existing_notification is not None:
+            continue
+
+        if alert.notify_in_app:
             notification = notification_repo.create(
                 title=title,
                 message=message,
@@ -152,11 +171,11 @@ def process_alerts_for_news(db: Session, news: News) -> int:
             if notification is not None:
                 created_count += 1
 
-        if alert.notify_email and owner.email and existing_notification is None:
+        if alert.notify_email and owner.email:
             send_email_notification(
                 to_email=owner.email,
                 subject=title,
-                body=f"{message}\n\n{news.link}",
+                body=f"{message}\n\nEnlace: {news.link}",
             )
 
     return created_count
