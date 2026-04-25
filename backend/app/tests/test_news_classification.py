@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from app.modules.alerts.matching import resolve_news_classification
+from app.modules.alerts.matching import _resolve_news_classification
 from app.modules.crawler.service import CrawlerService
 
 
@@ -31,7 +31,7 @@ def test_alert_classification_overrides_existing_news_category():
         SimpleNamespace(id=9, category="economy_business_finance"),
     ]
 
-    category, origin = resolve_news_classification(
+    category, origin = _resolve_news_classification(
         current_category="economy_business_finance",
         current_origin="source",
         matching_alerts=matching_alerts,
@@ -42,7 +42,7 @@ def test_alert_classification_overrides_existing_news_category():
 
 
 def test_existing_classification_is_kept_when_no_alert_matches():
-    category, origin = resolve_news_classification(
+    category, origin = _resolve_news_classification(
         current_category="health",
         current_origin="source",
         matching_alerts=[],

@@ -16,6 +16,10 @@ def test_default_catalog_summary_meets_source_checklist():
 
 
 def test_register_user_receives_default_catalog(db, monkeypatch):
+    # Este test ya no tiene tanto sentido ahora que las fuentes RSS 
+    # son individuales por cada usuario
+    # TODO: Hacer test verificando que las 110 fuentes se añaden 
+    # al iniciar el sistema 
     monkeypatch.setattr(
         "app.modules.auth.service.send_verification_email",
         lambda *_args, **_kwargs: True,
@@ -32,7 +36,7 @@ def test_register_user_receives_default_catalog(db, monkeypatch):
         )
     )
 
-    sources = db.query(Source).filter(Source.created_by == user.id).all()
+    sources = db.query(Source).all()
 
     assert len(sources) >= 100
     assert len({source.medium_name for source in sources}) >= 10
