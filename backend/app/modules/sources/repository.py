@@ -1,4 +1,4 @@
-"""Sources repository for Sprint 2 CRUD."""
+"""Sources repository for the global source catalog."""
 
 from typing import List, Optional
 
@@ -12,37 +12,36 @@ class SourceRepository:
 	def __init__(self, db: Session) -> None:
 		self.db = db
 
-	def get_by_id_and_owner(self, source_id: int, owner_id: int) -> Optional[Source]:
-		return (
-			self.db.query(Source)
-			.filter(Source.id == source_id, Source.created_by == owner_id)
-			.first()
-		)
+	def get_by_id(self, source_id: int) -> Optional[Source]:
+		return self.db.query(Source).filter(Source.id == source_id).first()
 
-	def get_by_url_and_owner(self, url: str, owner_id: int) -> Optional[Source]:
+
+	def get_by_url(self, url: str) -> Optional[Source]:
 		normalized_url = str(url).strip()
-		return (
-			self.db.query(Source)
-			.filter(Source.url == normalized_url, Source.created_by == owner_id)
-			.first()
-		)
+		return self.db.query(Source).filter(Source.url == normalized_url).first()
 
-	def list_by_owner(self, owner_id: int) -> List[Source]:
+	def list_all(self) -> List[Source]:
 		return (
-			self.db.query(Source)
-			.filter(Source.created_by == owner_id)
-			.order_by(Source.medium_name.asc(), Source.name.asc(), Source.created_at.desc())
-			.all()
-		)
+            self.db.query(Source)
+            .order_by(Source.medium_name.asc(), Source.name.asc(), Source.created_at.desc())
+            .all()
+        )
 
-	def create(self, source_data: SourceCreate, owner_id: int) -> Source:
+	def list_active(self) -> List[Source]:
+		return (
+            self.db.query(Source)
+            .filter(Source.is_active == True)  # noqa: E712
+            .order_by(Source.medium_name.asc(), Source.name.asc(), Source.created_at.desc())
+            .all()
+        )
+
+	def create(self, source_data: SourceCreate) -> Source:
 		source = Source(
-			medium_name=source_data.medium_name.strip(),
-			name=source_data.name.strip(),
-			url=str(source_data.url),
-			category=source_data.category,
-			created_by=owner_id,
-		)
+            medium_name=source_data.medium_name.strip(),
+            name=source_data.name.strip(),
+            url=str(source_data.url),
+            category=source_data.category,
+        )
 		self.db.add(source)
 		self.db.commit()
 		self.db.refresh(source)

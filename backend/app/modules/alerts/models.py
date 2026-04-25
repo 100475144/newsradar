@@ -16,6 +16,7 @@ class Alert(Base):
     expanded_keywords = Column(JSONB, nullable=False, default=list)
     category = Column(String(255), nullable=False)
     source_ids = Column(JSONB, nullable=False, default=list)
+    cron_expression = Column(String(100), nullable=False, default="*/5 * * * *")
 
     is_active = Column(Boolean, nullable=False, default=True)
     notify_in_app = Column(Boolean, nullable=False, default=True)

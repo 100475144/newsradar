@@ -74,7 +74,6 @@ class SourceUpdate(BaseModel):
 class SourceResponse(SourceBase):
     id: int
     is_active: bool = True
-    created_by: int
     created_at: datetime
     updated_at: datetime
 

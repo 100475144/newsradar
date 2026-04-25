@@ -14,7 +14,9 @@ class NotificationService:
         return self.repository.create(
             title=data.title.strip(),
             message=data.message.strip(),
-            created_by=user_id,
+            user_id=user_id,
+            alert_id=data.alert_id,
+            news_id=data.news_id,
         )
 
     def list_notifications(self, user_id: int):

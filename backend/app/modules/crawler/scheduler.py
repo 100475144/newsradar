@@ -6,12 +6,10 @@ from collections.abc import Callable
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.news.repository import NewsRepository
 from app.modules.news.service import NewsService
-from app.modules.sources.models import Source
 
 from .service import CrawlerService
 
@@ -50,7 +48,6 @@ class CrawlerScheduler:
         )
 
         if self.run_on_startup:
-            # Run first cycle immediately
             self._scheduler.add_job(
                 self._run_cycle_async,
                 id="crawler_startup",
@@ -66,7 +63,6 @@ class CrawlerScheduler:
         await self._run_cycle_async()
 
     async def _run_cycle_async(self) -> None:
-        """Wrapper async que ejecuta el ciclo síncrono en un thread."""
         import asyncio
         await asyncio.to_thread(self._run_cycle)
 
@@ -75,39 +71,22 @@ class CrawlerScheduler:
 
         db = self.db_factory()
         try:
-            user_ids = self._get_user_ids_with_active_sources(db)
+            news_repository = NewsRepository(db)
+            news_service = NewsService(news_repository)
+            crawler_service = CrawlerService(db, news_service)
 
-            if not user_ids:
-                logger.info("No active sources found for any user")
-                return
+            results = crawler_service.crawl_all_active_sources()
 
-            for user_id in user_ids:
-                try:
-                    news_repository = NewsRepository(db)
-                    news_service = NewsService(news_repository)
-                    crawler_service = CrawlerService(db, news_service)
+            processed_sources = len(results)
+            stored_items = sum(result.stored_items for result in results)
+            skipped_items = sum(result.duplicates_skipped for result in results)
 
-                    results = crawler_service.crawl_all_active_sources(user_id)
-
-                    processed_sources = len(results)
-                    stored_items = sum(result.stored_items for result in results)
-                    skipped_items = sum(result.duplicates_skipped for result in results)
-
-                    logger.info(
-                        "Crawler run for user_id=%s finished: processed_sources=%s stored_items=%s duplicates_skipped=%s",
-                        user_id,
-                        processed_sources,
-                        stored_items,
-                        skipped_items,
-                    )
-
-                except Exception:
-                    logger.exception(
-                        "Crawler failed for user_id=%s",
-                        user_id,
-                    )
-                    db.rollback()
-
+            logger.info(
+                "Crawler global run finished: processed_sources=%s stored_items=%s duplicates_skipped=%s",
+                processed_sources,
+                stored_items,
+                skipped_items,
+            )
         except Exception:
             logger.exception("Crawler scheduler cycle failed")
             db.rollback()
@@ -116,16 +95,6 @@ class CrawlerScheduler:
 
         logger.info("Crawler scheduler cycle finished")
 
-    @staticmethod
-    def _get_user_ids_with_active_sources(db: Session) -> list[int]:
-        stmt = (
-            select(Source.created_by)
-            .where(Source.is_active.is_(True))
-            .distinct()
-        )
-        return list(db.execute(stmt).scalars().all())
-
 
 def get_crawler_cron_expression() -> str:
-    """Read the cron expression from env or default to every 5 minutes."""
     return os.getenv("CRAWLER_CRON_EXPRESSION", "*/5 * * * *")

@@ -1,96 +1,70 @@
 """Emparejamiento entre alertas y noticias.
 
-Mejoras:
-- Respeta source_ids: si la alerta tiene fuentes específicas, solo matchea noticias de esas fuentes.
+Reglas:
+- Si la alerta tiene source_ids, solo matchea noticias de esas fuentes.
+- Si la alerta no tiene source_ids, matchea noticias de fuentes de la misma categoría IPTC.
 - Clasifica la noticia con la categoría IPTC de la alerta si hay match.
+- Genera notificaciones solo para el propietario de la alerta.
 """
 
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from datetime import datetime
+from sqlalchemy.orm import Session
 
 from app.modules.alerts.models import Alert
-from app.modules.alerts.repository import AlertRepository
-from app.modules.auth.models import User
+from app.modules.news.models import News
 from app.modules.notifications.email_utils import send_email_notification
 from app.modules.notifications.repository import NotificationRepository
+from app.modules.sources.models import Source
 
 
-def _build_news_text(news) -> str:
-    parts = [
-        getattr(news, "title", "") or "",
-        getattr(news, "summary", "") or "",
-        getattr(news, "category", "") or "",
-        getattr(news, "author", "") or "",
-    ]
-    return " ".join(parts).lower().strip()
+def _normalize(value: str | None) -> str:
+    return (value or "").strip().lower()
 
 
-def _build_terms(alert: Alert) -> list[str]:
-    terms = [alert.keyword]
-    terms.extend(alert.expanded_keywords or [])
-    cleaned = []
-    seen = set()
+def _news_matches_alert(news: News, alert: Alert, source: Source | None) -> bool:
+    if not alert.is_active:
+        return False
 
-    for term in terms:
-        term = (term or "").strip().lower()
-        if term and term not in seen:
-            seen.add(term)
-            cleaned.append(term)
-
-    return cleaned
-
-
-def _matches(alert: Alert, news, news_text: str) -> bool:
-    # Check source_ids filter: if alert specifies sources, only match those
-    alert_source_ids = alert.source_ids or []
-    if alert_source_ids:
-        news_source_id = getattr(news, "source_id", None)
-        if news_source_id not in alert_source_ids:
+    if alert.source_ids:
+        if news.source_id not in set(alert.source_ids):
+            return False
+    else:
+        if source is None:
             return False
 
-    terms = _build_terms(alert)
-    return any(term in news_text for term in terms)
+        source_category = (source.category or "").strip().lower()
+        alert_category = (alert.category or "").strip().lower()
+
+        if source_category != alert_category:
+            return False
+
+    haystack = " ".join(
+        part for part in [news.title, news.summary or "", news.author or ""] if part
+    ).lower()
+
+    keywords = [_normalize(alert.keyword)]
+    keywords.extend(_normalize(item) for item in (alert.expanded_keywords or []))
+    keywords = [item for item in keywords if item]
+
+    return any(keyword in haystack for keyword in keywords)
 
 
-def _build_notification_title(alert: Alert) -> str:
-    now = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
-    return f"Actualización de {alert.name} en {now}"
-
-
-def _build_notification_message(alert: Alert, news) -> str:
-    source = getattr(news, "source_id", "unknown")
-    published_at = getattr(news, "published_at", None)
-    published_at_text = published_at.isoformat() if published_at else "unknown"
-    title = getattr(news, "title", "")
-    summary = getattr(news, "summary", "") or ""
-    link = getattr(news, "link", "") or ""
-
-    return (
-        f"Alerta: {alert.name}\n"
-        f"Categoría: {alert.category}\n"
-        f"Origen de la noticia: {source}\n"
-        f"Fecha/hora: {published_at_text}\n"
-        f"Título: {title}\n"
-        f"Resumen: {summary}\n"
-        f"Enlace: {link}"
-    )
-
-
-def resolve_news_classification(
-    *,
+def _resolve_news_classification(
     current_category: str | None,
     current_origin: str | None,
     matching_alerts: list[Alert],
 ) -> tuple[str | None, str]:
-    """Choose a deterministic category: alert wins over source/RSS when there is a match."""
     normalized_origin = (current_origin or "unknown").strip().lower() or "unknown"
     category_votes: dict[str, tuple[int, int]] = {}
 
     for alert in matching_alerts:
-        category = (getattr(alert, "category", "") or "").strip()
+        category = (alert.category or "").strip()
         if not category:
             continue
 
-        alert_id = getattr(alert, "id", 0) or 0
+        alert_id = alert.id or 0
         if category in category_votes:
             count, first_alert_id = category_votes[category]
             category_votes[category] = (count + 1, min(first_alert_id, alert_id))
@@ -111,21 +85,28 @@ def resolve_news_classification(
     return selected_category, "alert"
 
 
-def process_alerts_for_news(db, news) -> int:
-    news_text = _build_news_text(news)
-    if not news_text:
+def process_alerts_for_news(db: Session, news: News) -> int:
+    alerts = (
+        db.query(Alert)
+        .filter(Alert.is_active.is_(True))
+        .order_by(Alert.id.asc())
+        .all()
+    )
+
+    if not alerts:
         return 0
 
-    alert_repo = AlertRepository(db)
-    notification_repo = NotificationRepository(db)
+    source = None
+    if news.source_id is not None:
+        source = db.query(Source).filter(Source.id == news.source_id).first()
 
-    alerts = alert_repo.list_active()
-    matching_alerts = [alert for alert in alerts if _matches(alert, news, news_text)]
-
+    matching_alerts = [
+        alert for alert in alerts if _news_matches_alert(news, alert, source)
+    ]
     if not matching_alerts:
         return 0
 
-    selected_category, classification_origin = resolve_news_classification(
+    selected_category, classification_origin = _resolve_news_classification(
         current_category=getattr(news, "category", None),
         current_origin=getattr(news, "classification_origin", None),
         matching_alerts=matching_alerts,
@@ -136,34 +117,65 @@ def process_alerts_for_news(db, news) -> int:
         or getattr(news, "classification_origin", None) != classification_origin
     ):
         news.category = selected_category
-        news.classification_origin = classification_origin
+        if hasattr(news, "classification_origin"):
+            news.classification_origin = classification_origin
         db.add(news)
         db.commit()
         db.refresh(news)
 
-    created = 0
+    source_name = source.name if source else None
+
+    notification_repo = NotificationRepository(db)
+    created_count = 0
 
     for alert in matching_alerts:
+        owner = alert.owner
+        if owner is None or not owner.is_active or not owner.is_verified:
+            continue
 
-        title = _build_notification_title(alert)
-        message = _build_notification_message(alert, news)
+        now = datetime.now().strftime("%d/%m/%Y %H:%M")
+        title = f"Actualización de {alert.name} en {now}"
+
+        published = (
+            news.published_at.strftime("%d/%m/%Y %H:%M")
+            if getattr(news, "published_at", None)
+            else now
+        )
+        summary = getattr(news, "summary", None) or "Sin resumen disponible."
+        message = (
+            f"Fuente: {source_name or 'Desconocida'}\n"
+            f"Fecha: {published}\n"
+            f"Título: {news.title}\n\n"
+            f"{summary}"
+        )
+
+        existing_notification = notification_repo.get_by_delivery_key(
+            user_id=owner.id,
+            alert_id=alert.id,
+            news_id=news.id,
+        )
+
+        # Si ya existe el registro esta noticia ya fue procesada para esta alerta,
+        # saltamos ambos canales para evitar duplicados
+        if existing_notification is not None:
+            continue
 
         if alert.notify_in_app:
-            notification_repo.create(
+            notification = notification_repo.create(
                 title=title,
                 message=message,
-                created_by=alert.created_by,
+                user_id=owner.id,
+                alert_id=alert.id,
+                news_id=news.id,
+            )
+            if notification is not None:
+                created_count += 1
+
+        if alert.notify_email and owner.email:
+            send_email_notification(
+                to_email=owner.email,
+                subject=title,
+                body=f"{message}\n\nEnlace: {news.link}",
             )
 
-        if alert.notify_email:
-            user = db.query(User).filter(User.id == alert.created_by).first()
-            if user and getattr(user, "email", None):
-                send_email_notification(
-                    to_email=user.email,
-                    subject=title,
-                    body=message,
-                )
-
-        created += 1
-
-    return created
+    return created_count
