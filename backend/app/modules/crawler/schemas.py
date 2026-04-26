@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class SourceStub(BaseModel):
     id: int
+    medium_name: str
     name: str
     url: str
     category: Optional[str] = None

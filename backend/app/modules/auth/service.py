@@ -6,7 +6,6 @@ from app.core.security import (
     get_password_hash,
     verify_password,
 )
-from app.core.seed_sources import seed_default_sources_for_user
 from app.modules.auth.repository import UserRepository
 from app.modules.auth.schemas import LoginResponse, UserCreate
 from app.modules.notifications.email_utils import send_verification_email
@@ -25,12 +24,6 @@ class AuthService:
 
         hashed_password = get_password_hash(user_data.password)
         user = self.repository.create(user_data, hashed_password)
-
-        try:
-            seeded_sources = seed_default_sources_for_user(self.repository.db, user.id)
-            logger.info("Seeded %d default RSS sources for user %s", seeded_sources, user.email)
-        except Exception:
-            logger.exception("Default RSS catalog could not be seeded for %s", user.email)
 
         # Generate verification token and send email
         token_obj = self.repository.create_verification_token(user.id)

@@ -1,5 +1,4 @@
 import pytest
-from app.tests.conftest import client
 
 @pytest.fixture
 def user_data():

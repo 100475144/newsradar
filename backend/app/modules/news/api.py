@@ -27,7 +27,6 @@ def list_news(
     service: NewsService = Depends(get_news_service),
 ):
     result = service.list_news(
-        user_id=current_user.id,
         skip=skip,
         limit=limit,
         source_id=source_id,
@@ -60,7 +59,7 @@ def get_news(
     current_user: User = Depends(get_current_active_verified_user),
     service: NewsService = Depends(get_news_service),
 ):
-    news = service.get_news(news_id, current_user.id)
+    news = service.get_news(news_id)
     if not news:
         raise HTTPException(status_code=404, detail="News not found")
     return news

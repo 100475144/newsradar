@@ -21,6 +21,7 @@ class AlertRepository:
         expanded_keywords: list[str],
         category: str,
         source_ids: list[int],
+        cron_expression: str,
         notify_in_app: bool,
         notify_email: bool,
         created_by: int,
@@ -31,6 +32,7 @@ class AlertRepository:
             expanded_keywords=expanded_keywords,
             category=category,
             source_ids=source_ids,
+            cron_expression=cron_expression,
             notify_in_app=notify_in_app,
             notify_email=notify_email,
             created_by=created_by,
@@ -40,7 +42,7 @@ class AlertRepository:
         self.db.commit()
         self.db.refresh(alert)
         return alert
-
+    
     def list_for_user(self, user_id: int) -> list[Alert]:
         return (
             self.db.query(Alert)
@@ -49,10 +51,21 @@ class AlertRepository:
             .all()
         )
 
-    def list_active(self) -> list[Alert]:
-        return self.db.query(Alert).filter(Alert.is_active == True).all()  # noqa: E712
+    def list_all(self) -> list[Alert]:
+        return self.db.query(Alert).order_by(Alert.id.desc()).all()
 
-    def get_by_id_for_user(self, alert_id: int, user_id: int) -> Alert | None:
+    def list_active(self) -> list[Alert]:
+        return (
+            self.db.query(Alert)
+            .filter(Alert.is_active == True)  # noqa: E712
+            .order_by(Alert.id.desc())
+            .all()
+        )
+
+    def get_by_id(self, alert_id: int) -> Alert | None:
+        return self.db.query(Alert).filter(Alert.id == alert_id).first()
+
+    def get_by_id_created_by(self, alert_id: int, user_id: int) -> Alert | None:
         return (
             self.db.query(Alert)
             .filter(Alert.id == alert_id, Alert.created_by == user_id)

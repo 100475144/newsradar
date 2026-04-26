@@ -16,20 +16,15 @@ from app.modules.alerts.schemas import AlertCreate, AlertResponse, AlertUpdate
 from app.modules.alerts.service import AlertService
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserRole
-from app.modules.sources.repository import SourceRepository
-
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
-# Dependency shortcuts
 _gestor_or_admin = require_role(UserRole.ADMIN, UserRole.GESTOR)
 
 
 def get_alert_service(db: Session = Depends(get_db)) -> AlertService:
-    return AlertService(AlertRepository(db), SourceRepository(db))
+    return AlertService(AlertRepository(db))
 
-
-# ── Read endpoints (any authenticated user) ──────────────────────────
 
 @router.get("/", response_model=list[AlertResponse])
 def list_alerts(
@@ -41,7 +36,6 @@ def list_alerts(
 
 @router.get("/categories")
 def list_iptc_categories():
-    """Return all valid IPTC Media Topics first-level categories."""
     return [
         {"code": code, "label": label}
         for code, label in IPTC_CATEGORIES.items()
@@ -76,8 +70,6 @@ def get_alert(
 ):
     return service.get_alert(alert_id, current_user.id)
 
-
-# ── Write endpoints (gestor + admin only) ────────────────────────────
 
 @router.post("/", response_model=AlertResponse)
 def create_alert(

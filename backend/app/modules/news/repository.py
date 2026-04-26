@@ -4,8 +4,6 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.modules.sources.models import Source
-
 from .models import News
 
 
@@ -19,32 +17,19 @@ class NewsRepository:
         self.db.refresh(news)
         return news
 
-    def get_by_id_for_user(self, news_id: int, user_id: int) -> Optional[News]:
-        stmt = (
-            select(News)
-            .join(Source, News.source_id == Source.id)
-            .where(
-                News.id == news_id,
-                Source.created_by == user_id,
-            )
-        )
+    def get_by_id(self, news_id: int) -> Optional[News]:
+        stmt = select(News).where(News.id == news_id)
         return self.db.execute(stmt).scalar_one_or_none()
 
-    def list_for_user(
+    def list(
         self,
         *,
-        user_id: int,
         skip: int = 0,
         limit: int = 20,
         source_id: int | None = None,
         category: str | None = None,
     ) -> list[News]:
-        stmt = (
-            select(News)
-            .join(Source, News.source_id == Source.id)
-            .where(Source.created_by == user_id)
-            .order_by(News.published_at.desc(), News.id.desc())
-        )
+        stmt = select(News).order_by(News.published_at.desc(), News.id.desc())
 
         if source_id is not None:
             stmt = stmt.where(News.source_id == source_id)
@@ -55,19 +40,13 @@ class NewsRepository:
         stmt = stmt.offset(skip).limit(limit)
         return list(self.db.execute(stmt).scalars().all())
 
-    def count_for_user(
+    def count(
         self,
         *,
-        user_id: int,
         source_id: int | None = None,
         category: str | None = None,
     ) -> int:
-        stmt = (
-            select(func.count(News.id))
-            .select_from(News)
-            .join(Source, News.source_id == Source.id)
-            .where(Source.created_by == user_id)
-        )
+        stmt = select(func.count(News.id)).select_from(News)
 
         if source_id is not None:
             stmt = stmt.where(News.source_id == source_id)

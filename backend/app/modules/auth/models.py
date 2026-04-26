@@ -17,7 +17,7 @@ class User(Base):
 
     hashed_password = Column(String, nullable=False)
 
-    role = Column(String, default="lector", nullable=False)
+    role = Column(String, default="gestor", nullable=False)
 
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)

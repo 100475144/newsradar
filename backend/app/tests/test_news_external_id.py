@@ -28,8 +28,7 @@ def test_create_news_accepts_long_external_id(db):
         name="Technology",
         url="https://example.com/rss/technology.xml",
         category="science_technology",
-        is_active=True,
-        created_by=user.id,
+        is_active=True
     )
     db.add(source)
     db.commit()

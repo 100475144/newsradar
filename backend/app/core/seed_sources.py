@@ -200,13 +200,11 @@ def get_seed_catalog_summary() -> dict[str, int | bool]:
     }
 
 
-def seed_default_sources_for_user(db: Session, owner_id: int) -> int:
-    """Ensure a user has the full default catalog without duplicating URLs."""
+def seed_default_sources(db: Session) -> int:
+    """Ensure the global default RSS catalog exists exactly once per URL."""
     existing_urls = {
         row[0]
-        for row in db.query(Source.url)
-        .filter(Source.created_by == owner_id)
-        .all()
+        for row in db.query(Source.url).all()
     }
 
     sources_to_add: list[Source] = []
@@ -221,7 +219,6 @@ def seed_default_sources_for_user(db: Session, owner_id: int) -> int:
                 url=seed["url"],
                 category=seed["category"],
                 is_active=True,
-                created_by=owner_id,
             )
         )
         existing_urls.add(seed["url"])

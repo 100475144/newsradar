@@ -1,4 +1,3 @@
-from app.tests.conftest import client
 from app.main import app
 
 def test_health(client):

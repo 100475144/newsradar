@@ -1,7 +1,6 @@
-"""Sources models for Sprint 2 CRUD."""
+"""Global RSS source catalog."""
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -11,7 +10,7 @@ class Source(Base):
 	"""RSS source owned by a user."""
 
 	__tablename__ = "sources"
-	__table_args__ = (UniqueConstraint("url", "created_by", name="uq_sources_url_created_by"),)
+	__table_args__ = (UniqueConstraint("url", name="uq_sources_url"),)
 
 	id = Column(Integer, primary_key=True, index=True)
 	medium_name = Column(String(120), nullable=False, index=True)
@@ -19,9 +18,6 @@ class Source(Base):
 	url = Column(String, nullable=False, index=True)
 	category = Column(String(255), nullable=True, index=True)
 	is_active = Column(Boolean, default=True, nullable=False)
-
-	created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-	owner = relationship("User")
 
 	created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 	updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

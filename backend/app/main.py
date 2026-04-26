@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.database import session_newsradar
 from app.core.logging_config import configure_logging
 from app.core.security import get_password_hash
-from app.core.seed_sources import get_seed_catalog_summary, seed_default_sources_for_user
+from app.core.seed_sources import get_seed_catalog_summary, seed_default_sources
 from app.modules.auth.models import User
 from app.modules.crawler.scheduler import (
     CrawlerScheduler,
@@ -48,18 +48,10 @@ def _seed_rss_sources() -> None:
     """Ensure every user has the default RSS catalog."""
     db = session_newsradar()
     try:
-        users = db.query(User).order_by(User.id).all()
-        if not users:
-            return
-
-        inserted_total = 0
-        for user in users:
-            inserted_total += seed_default_sources_for_user(db, user.id)
-
+        inserted_total = seed_default_sources(db)
         summary = get_seed_catalog_summary()
         logger.info(
-            "Default RSS catalog ensured for %d users (%d channels, %d outlets, %d new rows inserted)",
-            len(users),
+            "Default RSS catalog ensured globally (%d channels, %d outlets, %d new rows inserted)",
             summary["total_channels"],
             summary["total_media_outlets"],
             inserted_total,

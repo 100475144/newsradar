@@ -97,8 +97,7 @@ def test_matching_news_sends_email_notification_via_mailhog():
             name=f"Test Source {unique}",
             url=source_url,
             category="science_technology",
-            is_active=True,
-            created_by=user.id,
+            is_active=True
         )
         db.add(source)
         db.commit()
@@ -150,7 +149,7 @@ def test_matching_news_sends_email_notification_via_mailhog():
 
         notification_count = (
             db.query(Notification)
-            .filter(Notification.created_by == user.id)
+            .filter(Notification.user_id == user.id)
             .count()
         )
         assert notification_count == 0
