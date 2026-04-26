@@ -20,7 +20,7 @@ class NewsService:
         source_id: int | None = None,
         category: str | None = None,
     ):
-        items = self.repository.list(
+        items = self.repository.list_all(
             skip=skip,
             limit=limit,
             source_id=source_id,

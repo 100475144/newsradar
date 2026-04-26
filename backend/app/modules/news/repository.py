@@ -21,7 +21,7 @@ class NewsRepository:
         stmt = select(News).where(News.id == news_id)
         return self.db.execute(stmt).scalar_one_or_none()
 
-    def list(
+    def list_all(
         self,
         *,
         skip: int = 0,
@@ -97,13 +97,27 @@ class NewsRepository:
 
         freq: dict[str, int] = {}
         stop = {
+            # English
             "a", "an", "the", "and", "or", "but", "in", "on", "at", "to",
             "for", "of", "with", "by", "from", "is", "it", "as", "be",
             "was", "are", "been", "its", "this", "that", "not", "has",
             "have", "had", "will", "would", "can", "could", "may",
+            "about", "how", "what", "who", "why", "when", "where", "which",
+            "after", "before", "into", "over", "under", "between", "through",
+            "more", "most", "than", "then", "also", "just", "only", "very",
+            "new", "now", "out", "up", "all", "any", "some", "each", "every",
+            "other", "our", "their", "his", "her", "your", "my", "its",
+            "do", "does", "did", "get", "got", "set", "let", "say", "said",
+            "says", "one", "two", "first", "last", "being", "here", "there",
+            "been", "were", "they", "them", "we", "he", "she", "you",
+            "if", "so", "no", "yes", "too", "own", "same", "such", "off",
+            # Spanish
             "de", "la", "el", "en", "y", "los", "las", "del", "un",
             "una", "que", "por", "con", "para", "se", "su", "al", "es",
             "lo", "no", "más", "ya", "han", "ha", "son", "sobre", "como",
+            "sus", "esto", "esta", "ese", "esa", "pero", "sin", "entre",
+            "tras", "desde", "hasta", "ser", "fue", "sido", "hay", "muy",
+            "todo", "otra", "otro", "nos", "les", "ante", "según", "cada",
         }
         for title in titles:
             for word in title.lower().split():
