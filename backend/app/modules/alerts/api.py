@@ -42,6 +42,16 @@ def list_iptc_categories():
     ]
 
 
+@router.get("/stats")
+def alerts_stats(
+    current_user: User = Depends(get_current_active_verified_user),
+    service: AlertService = Depends(get_alert_service),
+):
+    by_category = service.repository.count_by_category()
+    total = sum(item["count"] for item in by_category)
+    return {"total_alerts": total, "by_category": by_category}
+
+
 @router.get("/suggestions/{keyword}")
 def get_keyword_suggestions(keyword: str):
     suggestions = suggest_expanded_keywords(keyword)

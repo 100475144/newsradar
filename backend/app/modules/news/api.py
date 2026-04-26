@@ -35,6 +35,24 @@ def list_news(
     return NewsListResponse(items=result["items"], total=result["total"])
 
 
+@router.get("/stats")
+def news_stats(
+    current_user: User = Depends(get_current_active_verified_user),
+    service: NewsService = Depends(get_news_service),
+):
+    return service.get_stats()
+
+
+@router.get("/wordcloud")
+def news_wordcloud(
+    category: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=10, le=200),
+    current_user: User = Depends(get_current_active_verified_user),
+    service: NewsService = Depends(get_news_service),
+):
+    return service.get_wordcloud(category=category, limit=limit)
+
+
 @router.get("/{news_id}", response_model=NewsResponse)
 def get_news(
     news_id: int,

@@ -1,20 +1,8 @@
 import React, { useCallback, useEffect, useReducer, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getNews } from '../api/newsApi'
 
 const PAGE_SIZE = 20
-
-function formatClassificationOrigin(origin) {
-  switch ((origin || '').toLowerCase()) {
-    case 'alert':
-      return 'Classified by alert'
-    case 'source':
-      return 'Classified by source'
-    case 'rss':
-      return 'Classified by RSS'
-    default:
-      return 'Classification pending'
-  }
-}
 
 function newsReducer(state, action) {
   switch (action.type) {
@@ -30,9 +18,20 @@ function newsReducer(state, action) {
 }
 
 function NewsRow({ news }) {
+  const { t } = useTranslation()
+
+  function formatClassificationOrigin(origin) {
+    switch ((origin || '').toLowerCase()) {
+      case 'alert': return t('news.classified_alert')
+      case 'source': return t('news.classified_source')
+      case 'rss': return t('news.classified_rss')
+      default: return t('news.classified_pending')
+    }
+  }
+
   const date = news.published_at
     ? new Date(news.published_at).toLocaleString()
-    : 'Unknown date'
+    : t('news.unknown_date')
 
   return (
     <div className="source-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
@@ -52,9 +51,9 @@ function NewsRow({ news }) {
       ) : null}
       <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
         <span>{date}</span>
-        {news.author ? <span>By {news.author}</span> : null}
+        {news.author ? <span>{t('news.by_author', { author: news.author })}</span> : null}
         <a href={news.link} target="_blank" rel="noreferrer noopener" style={{ color: 'var(--accent)' }}>
-          Read original
+          {t('news.read_original')}
         </a>
       </div>
     </div>
@@ -62,6 +61,7 @@ function NewsRow({ news }) {
 }
 
 export default function NewsPage() {
+  const { t } = useTranslation()
   const [state, dispatch] = useReducer(newsReducer, {
     status: 'loading',
     items: [],
@@ -94,31 +94,28 @@ export default function NewsPage() {
   return (
     <section className="sources-page">
       <div className="hero-card">
-        <p className="eyebrow">News</p>
-        <h1>Collected articles</h1>
-        <p>
-          All news articles crawled from your active RSS sources. Filter by
-          category or browse the latest entries.
-        </p>
+        <p className="eyebrow">{t('news.eyebrow')}</p>
+        <h1>{t('news.title')}</h1>
+        <p>{t('news.subtitle')}</p>
       </div>
 
       <div className="sources-toolbar" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
         <label className="field" style={{ minWidth: '14rem' }}>
-          <span>Filter by category</span>
+          <span>{t('news.filter_category')}</span>
           <input
             type="text"
             value={filterCategory}
             onChange={(e) => { setFilterCategory(e.target.value); setPage(0) }}
-            placeholder="e.g. health, sport..."
+            placeholder={t('news.filter_placeholder')}
           />
         </label>
         <span style={{ alignSelf: 'flex-end', padding: '0.95rem 0', color: 'var(--muted)', fontSize: '0.9rem' }}>
-          {state.total} article{state.total !== 1 ? 's' : ''} found
+          {t('news.articles_found', { count: state.total })}
         </span>
       </div>
 
       {state.status === 'loading' ? (
-        <p className="sources-feedback">Loading news...</p>
+        <p className="sources-feedback">{t('news.loading')}</p>
       ) : null}
 
       {state.status === 'error' ? (
@@ -127,7 +124,7 @@ export default function NewsPage() {
 
       {state.status === 'success' && state.items.length === 0 ? (
         <div className="panel-card sources-empty">
-          <p>No articles yet. Wait for the crawler to fetch news from your sources.</p>
+          <p>{t('news.empty')}</p>
         </div>
       ) : null}
 
@@ -146,17 +143,17 @@ export default function NewsPage() {
                 disabled={page === 0}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Previous
+                {t('news.previous')}
               </button>
               <span style={{ padding: '0.95rem 0.5rem', color: 'var(--muted)' }}>
-                Page {page + 1} of {totalPages}
+                {t('news.page_of', { current: page + 1, total: totalPages })}
               </span>
               <button
                 className="secondary-button"
                 disabled={page >= totalPages - 1}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next
+                {t('news.next')}
               </button>
             </div>
           ) : null}

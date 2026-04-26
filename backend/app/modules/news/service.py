@@ -20,7 +20,7 @@ class NewsService:
         source_id: int | None = None,
         category: str | None = None,
     ):
-        items = self.repository.list(
+        items = self.repository.list_all(
             skip=skip,
             limit=limit,
             source_id=source_id,
@@ -78,6 +78,14 @@ class NewsService:
         process_alerts_for_news(self.repository.db, created_news)
         return created_news
         
+    def get_stats(self):
+        total = self.repository.count_total()
+        by_category = self.repository.count_by_category()
+        return {"total_news": total, "by_category": by_category}
+
+    def get_wordcloud(self, category: str | None = None, limit: int = 50):
+        return self.repository.word_frequencies(category=category, limit=limit)
+
     @staticmethod
     def _normalize_link(link: str) -> str:
         parts = urlsplit(link.strip())

@@ -21,7 +21,7 @@ class NewsRepository:
         stmt = select(News).where(News.id == news_id)
         return self.db.execute(stmt).scalar_one_or_none()
 
-    def list(
+    def list_all(
         self,
         *,
         skip: int = 0,
@@ -74,3 +74,56 @@ class NewsRepository:
     def get_by_content_hash(self, content_hash: str) -> Optional[News]:
         stmt = select(News).where(News.content_hash == content_hash)
         return self.db.execute(stmt).scalar_one_or_none()
+
+    def count_total(self) -> int:
+        stmt = select(func.count(News.id))
+        return int(self.db.execute(stmt).scalar_one())
+
+    def count_by_category(self) -> list[dict]:
+        stmt = (
+            select(News.category, func.count(News.id).label("count"))
+            .where(News.category.isnot(None))
+            .group_by(News.category)
+            .order_by(func.count(News.id).desc())
+        )
+        rows = self.db.execute(stmt).all()
+        return [{"category": r.category, "count": r.count} for r in rows]
+
+    def word_frequencies(self, category: str | None = None, limit: int = 50) -> list[dict]:
+        stmt = select(News.title).where(News.title.isnot(None))
+        if category:
+            stmt = stmt.where(News.category == category)
+        titles = [row[0] for row in self.db.execute(stmt).all()]
+
+        freq: dict[str, int] = {}
+        stop = {
+            # English
+            "a", "an", "the", "and", "or", "but", "in", "on", "at", "to",
+            "for", "of", "with", "by", "from", "is", "it", "as", "be",
+            "was", "are", "been", "its", "this", "that", "not", "has",
+            "have", "had", "will", "would", "can", "could", "may",
+            "about", "how", "what", "who", "why", "when", "where", "which",
+            "after", "before", "into", "over", "under", "between", "through",
+            "more", "most", "than", "then", "also", "just", "only", "very",
+            "new", "now", "out", "up", "all", "any", "some", "each", "every",
+            "other", "our", "their", "his", "her", "your", "my", "its",
+            "do", "does", "did", "get", "got", "set", "let", "say", "said",
+            "says", "one", "two", "first", "last", "being", "here", "there",
+            "been", "were", "they", "them", "we", "he", "she", "you",
+            "if", "so", "no", "yes", "too", "own", "same", "such", "off",
+            # Spanish
+            "de", "la", "el", "en", "y", "los", "las", "del", "un",
+            "una", "que", "por", "con", "para", "se", "su", "al", "es",
+            "lo", "no", "más", "ya", "han", "ha", "son", "sobre", "como",
+            "sus", "esto", "esta", "ese", "esa", "pero", "sin", "entre",
+            "tras", "desde", "hasta", "ser", "fue", "sido", "hay", "muy",
+            "todo", "otra", "otro", "nos", "les", "ante", "según", "cada",
+        }
+        for title in titles:
+            for word in title.lower().split():
+                cleaned = "".join(c for c in word if c.isalnum())
+                if len(cleaned) > 2 and cleaned not in stop:
+                    freq[cleaned] = freq.get(cleaned, 0) + 1
+
+        sorted_words = sorted(freq.items(), key=lambda x: x[1], reverse=True)[:limit]
+        return [{"text": w, "value": v} for w, v in sorted_words]

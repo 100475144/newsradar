@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { resendVerification } from '../api/authApi'
 import { useAuth } from '../context/AuthContext'
 
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { t } = useTranslation()
   const [formData, setFormData] = useState(INITIAL_FORM)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState(() => location.state?.message || '')
@@ -20,10 +22,7 @@ export default function LoginPage() {
 
   const handleChange = (event) => {
     const { name, value } = event.target
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }))
+    setFormData((current) => ({ ...current, [name]: value }))
   }
 
   const handleSubmit = async (event) => {
@@ -63,14 +62,14 @@ export default function LoginPage() {
   return (
     <div className="auth-card">
       <div className="auth-card__header">
-        <p className="eyebrow">Welcome back</p>
-        <h2>Sign in to your account</h2>
-        <p>Use your registered email and password after verifying your email address.</p>
+        <p className="eyebrow">{t('login.eyebrow')}</p>
+        <h2>{t('login.title')}</h2>
+        <p>{t('login.subtitle')}</p>
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
         <label className="field">
-          <span>Email</span>
+          <span>{t('login.email')}</span>
           <input
             type="email"
             name="email"
@@ -83,13 +82,13 @@ export default function LoginPage() {
         </label>
 
         <label className="field">
-          <span>Password</span>
+          <span>{t('login.password')}</span>
           <input
             type="password"
             name="password"
             value={formData.password}
             onChange={handleChange}
-            placeholder="At least 8 characters"
+            placeholder={t('login.password_placeholder')}
             autoComplete="current-password"
             required
           />
@@ -98,12 +97,8 @@ export default function LoginPage() {
         {notice ? <p className="form-message form-message--success">{notice}</p> : null}
         {error ? <p className="form-message form-message--error">{error}</p> : null}
 
-        <button
-          type="submit"
-          className="primary-button"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Signing in...' : 'Sign in'}
+        <button type="submit" className="primary-button" disabled={isSubmitting}>
+          {isSubmitting ? t('login.signing_in') : t('login.sign_in')}
         </button>
 
         {canResendVerification ? (
@@ -113,15 +108,13 @@ export default function LoginPage() {
             onClick={handleResendVerification}
             disabled={isResendingVerification}
           >
-            {isResendingVerification
-              ? 'Resending verification email...'
-              : 'Resend verification email'}
+            {isResendingVerification ? t('login.resending') : t('login.resend')}
           </button>
         ) : null}
       </form>
 
       <p className="auth-card__footer">
-        No account yet? <Link to="/register">Create one now</Link>.
+        {t('login.no_account')} <Link to="/register">{t('login.create_one')}</Link>.
       </p>
     </div>
   )
