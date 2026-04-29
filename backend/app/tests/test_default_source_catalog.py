@@ -1,9 +1,6 @@
 from app.core.iptc import IPTC_CATEGORY_CODES
-from app.core.seed_sources import get_seed_catalog_summary
-from app.modules.auth.repository import UserRepository
-from app.modules.auth.schemas import UserCreate
-from app.modules.auth.service import AuthService
-from app.modules.sources.models import Source
+from app.core.seed_sources import get_seed_catalog_summary, seed_default_sources
+from app.modules.sources.models import Category, InformationSource, RSSChannel
 
 
 def test_default_catalog_summary_meets_source_checklist():
@@ -15,29 +12,21 @@ def test_default_catalog_summary_meets_source_checklist():
     assert summary["covers_all_iptc_categories"] is True
 
 
-def test_register_user_receives_default_catalog(db, monkeypatch):
-    # Este test ya no tiene tanto sentido ahora que las fuentes RSS 
-    # son individuales por cada usuario
-    # TODO: Hacer test verificando que las 110 fuentes se añaden 
-    # al iniciar el sistema 
-    monkeypatch.setattr(
-        "app.modules.auth.service.send_verification_email",
-        lambda *_args, **_kwargs: True,
-    )
+def test_seed_populates_split_tables(db):
+    """Tras T6.3, el seed crea Category, InformationSource y RSSChannel."""
+    inserted = seed_default_sources(db)
+    assert inserted >= 100
 
-    auth_service = AuthService(UserRepository(db))
-    user = auth_service.register_user(
-        UserCreate(
-            email="catalog-test@example.com",
-            first_name="Catalog",
-            last_name="Tester",
-            organization="NewsRadar",
-            password="Password123!",
-        )
-    )
+    channels = db.query(RSSChannel).all()
+    assert len(channels) >= 100
 
-    sources = db.query(Source).all()
+    media = db.query(InformationSource).all()
+    assert len(media) >= 10
 
-    assert len(sources) >= 100
-    assert len({source.medium_name for source in sources}) >= 10
-    assert {source.category for source in sources if source.category}.issuperset(IPTC_CATEGORY_CODES)
+    covered_codes = {
+        cat.name
+        for cat in db.query(Category)
+        .join(RSSChannel, RSSChannel.category_id == Category.id)
+        .all()
+    }
+    assert set(IPTC_CATEGORY_CODES).issubset(covered_codes)

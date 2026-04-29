@@ -17,7 +17,7 @@ from app.modules.news.repository import NewsRepository
 from app.modules.news.schemas import NewsCreateInternal
 from app.modules.news.service import NewsService
 from app.modules.notifications.models import Notification
-from app.modules.sources.models import Source
+from app.modules.sources.models import Category, InformationSource, RSSChannel
 
 
 MAILHOG_API_URL = os.getenv(
@@ -92,28 +92,51 @@ def test_matching_news_sends_email_notification_via_mailhog():
         db.refresh(user)
         created_ids["user_id"] = user.id
 
-        source = Source(
-            medium_name="Example News",
-            name=f"Test Source {unique}",
-            url=source_url,
-            category="science_technology",
-            is_active=True
+        # Asegurar Category IPTC y crear InformationSource + RSSChannel.
+        category = (
+            db.query(Category)
+            .filter(Category.name == "science_technology")
+            .first()
         )
-        db.add(source)
+        if category is None:
+            category = Category(name="science_technology", source="IPTC")
+            db.add(category)
+            db.commit()
+            db.refresh(category)
+
+        medium = InformationSource(
+            name=f"Example News {unique}",
+            url="https://example.com/",
+        )
+        db.add(medium)
         db.commit()
-        db.refresh(source)
-        created_ids["source_id"] = source.id
+        db.refresh(medium)
+        created_ids["medium_id"] = medium.id
+
+        channel = RSSChannel(
+            url=source_url,
+            category_id=category.id,
+            information_source_id=medium.id,
+            name=f"Test Source {unique}",
+            is_active=True,
+        )
+        db.add(channel)
+        db.commit()
+        db.refresh(channel)
+        created_ids["source_id"] = channel.id
 
         alert = Alert(
             name=alert_name,
             keyword="ai",
-            expanded_keywords=["machine learning", "neural networks", "automation"],
-            category="science_technology",
-            source_ids=[source.id],
+            descriptors=["machine learning", "neural networks", "automation"],
+            categories=[{"code": "science_technology", "label": "Science and Technology"}],
+            rss_channels_ids=[str(channel.id)],
+            information_sources_ids=[],
+            cron_expression="*/5 * * * *",
             is_active=True,
             notify_in_app=False,
             notify_email=True,
-            created_by=user.id,
+            user_id=user.id,
         )
         db.add(alert)
         db.commit()
@@ -122,7 +145,7 @@ def test_matching_news_sends_email_notification_via_mailhog():
 
         news_service = NewsService(NewsRepository(db))
         payload = NewsCreateInternal(
-            source_id=source.id,
+            source_id=channel.id,
             title=f"AI breakthrough {unique}",
             link=article_link,
             summary="Machine learning and neural networks are changing the industry.",
@@ -141,9 +164,10 @@ def test_matching_news_sends_email_notification_via_mailhog():
         subject = _decode_mime_header(message["Content"]["Headers"]["Subject"][0])
         body = _decode_mailhog_body(message)
 
+        # El nombre de la alerta aparece en el subject, no en el body.
         assert "Actualización de" in subject
-        assert alert_name in body
-        assert "Resumen:" in body
+        assert alert_name in subject
+        # El body incluye el resumen del RSS (checklist #11) y el enlace.
         assert "Machine learning and neural networks" in body
         assert article_link in body
 
@@ -160,7 +184,11 @@ def test_matching_news_sends_email_notification_via_mailhog():
         if created_ids.get("alert_id"):
             db.query(Alert).filter(Alert.id == created_ids["alert_id"]).delete()
         if created_ids.get("source_id"):
-            db.query(Source).filter(Source.id == created_ids["source_id"]).delete()
+            db.query(RSSChannel).filter(RSSChannel.id == created_ids["source_id"]).delete()
+        if created_ids.get("medium_id"):
+            db.query(InformationSource).filter(
+                InformationSource.id == created_ids["medium_id"]
+            ).delete()
         if created_ids.get("user_id"):
             db.query(User).filter(User.id == created_ids["user_id"]).delete()
         db.commit()

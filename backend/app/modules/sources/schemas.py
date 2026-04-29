@@ -1,83 +1,128 @@
-"""Sources schemas for Sprint 2 CRUD."""
+"""Schemas para Category, InformationSource y RSSChannel.
 
-from datetime import datetime
+Alineados con la API oficial proporcionada por el profesor.
+"""
+
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
-from app.core.iptc import IPTC_CATEGORIES, IPTC_CATEGORY_CODES
+
+# ─────────────────────────────────────────────────────────────────────
+# Category
+# ─────────────────────────────────────────────────────────────────────
 
 
-class SourceBase(BaseModel):
-    medium_name: str = Field(..., min_length=1, max_length=120, description="Media outlet that owns the RSS channel")
-    name: str = Field(..., min_length=1, max_length=120, description="RSS channel or section name")
-    url: HttpUrl
-    category: Optional[str] = Field(default=None, max_length=255, description="IPTC first-level category code")
+class CategoryBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    source: str = Field(default="IPTC", pattern="^IPTC$")
 
-    @field_validator("medium_name", "name")
+    @field_validator("name")
     @classmethod
-    def validate_text_fields(cls, value: str) -> str:
+    def validate_name(cls, value: str) -> str:
         value = value.strip()
         if not value:
-            raise ValueError("This field cannot be empty or blank.")
-        return value
-
-    @field_validator("category")
-    @classmethod
-    def validate_iptc_category(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return value
-        value = value.strip().lower()
-        if value and value not in IPTC_CATEGORIES:
-            allowed = ", ".join(IPTC_CATEGORY_CODES)
-            raise ValueError(
-                f"Invalid IPTC category '{value}'. Must be one of: {allowed}"
-            )
+            raise ValueError("Category name cannot be empty.")
         return value
 
 
-class SourceCreate(SourceBase):
-    """Creation payload for a source."""
+class CategoryCreate(CategoryBase):
+    pass
 
 
-class SourceUpdate(BaseModel):
-    medium_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
-    url: Optional[HttpUrl] = None
-    category: Optional[str] = Field(default=None, max_length=255)
-    is_active: Optional[bool] = None
+    source: Optional[str] = Field(default=None, pattern="^IPTC$")
 
-    @field_validator("medium_name", "name")
+    @field_validator("name")
     @classmethod
-    def validate_optional_text_fields(cls, value: Optional[str]) -> Optional[str]:
+    def validate_optional_name(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return value
         value = value.strip()
         if not value:
-            raise ValueError("This field cannot be empty or blank.")
-        return value
-
-    @field_validator("category")
-    @classmethod
-    def validate_iptc_category(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return value
-        value = value.strip().lower()
-        if value and value not in IPTC_CATEGORIES:
-            allowed = ", ".join(IPTC_CATEGORY_CODES)
-            raise ValueError(
-                f"Invalid IPTC category '{value}'. Must be one of: {allowed}"
-            )
+            raise ValueError("Category name cannot be empty.")
         return value
 
 
-class SourceResponse(SourceBase):
+class CategoryResponse(CategoryBase):
     id: int
-    is_active: bool = True
-    created_at: datetime
-    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# InformationSource
+# ─────────────────────────────────────────────────────────────────────
+
+
+class InformationSourceBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    url: HttpUrl
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Information source name cannot be empty.")
+        return value
+
+
+class InformationSourceCreate(InformationSourceBase):
+    pass
+
+
+class InformationSourceUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    url: Optional[HttpUrl] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_optional_name(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value:
+            raise ValueError("Information source name cannot be empty.")
+        return value
+
+
+class InformationSourceResponse(InformationSourceBase):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# RSSChannel
+# ─────────────────────────────────────────────────────────────────────
+
+
+class RSSChannelBase(BaseModel):
+    url: HttpUrl
+    category_id: int
+
+
+class RSSChannelCreate(RSSChannelBase):
+    pass
+
+
+class RSSChannelUpdate(BaseModel):
+    url: Optional[HttpUrl] = None
+    category_id: Optional[int] = None
+
+
+class RSSChannelResponse(RSSChannelBase):
+    id: int
+    information_source_id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Catalog summary (mantenido como endpoint añadido para checklist #13-15)
+# ─────────────────────────────────────────────────────────────────────
 
 
 class SourceCatalogSummaryResponse(BaseModel):

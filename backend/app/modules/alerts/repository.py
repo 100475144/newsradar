@@ -1,4 +1,9 @@
-"""Repositorio del módulo alerts: acceso a datos de alertas."""
+"""Repositorio del módulo alerts: acceso a datos de alertas.
+
+Adaptado al schema oficial (T6.4): usa ``user_id`` en lugar de
+``created_by`` y los campos ``descriptors`` / ``categories`` /
+``rss_channels_ids`` / ``information_sources_ids``.
+"""
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -11,42 +16,45 @@ class AlertRepository:
         self.db = db
 
     def count_for_user(self, user_id: int) -> int:
-        return self.db.query(Alert).filter(Alert.created_by == user_id).count()
+        return self.db.query(Alert).filter(Alert.user_id == user_id).count()
 
     def create(
         self,
         *,
         name: str,
-        keyword: str,
-        expanded_keywords: list[str],
-        category: str,
-        source_ids: list[int],
+        descriptors: list[str],
+        categories: list[dict],
+        rss_channels_ids: list[str],
+        information_sources_ids: list[str],
         cron_expression: str,
-        notify_in_app: bool,
-        notify_email: bool,
-        created_by: int,
+        user_id: int,
+        keyword: str | None = None,
+        notify_in_app: bool = True,
+        notify_email: bool = False,
+        is_active: bool = True,
     ) -> Alert:
         alert = Alert(
             name=name,
-            keyword=keyword,
-            expanded_keywords=expanded_keywords,
-            category=category,
-            source_ids=source_ids,
+            descriptors=descriptors,
+            categories=categories,
+            rss_channels_ids=rss_channels_ids,
+            information_sources_ids=information_sources_ids,
             cron_expression=cron_expression,
+            user_id=user_id,
+            keyword=keyword,
             notify_in_app=notify_in_app,
             notify_email=notify_email,
-            created_by=created_by,
-            is_active=True,
+            is_active=is_active,
         )
         self.db.add(alert)
         self.db.commit()
         self.db.refresh(alert)
         return alert
-    
+
     def list_for_user(self, user_id: int) -> list[Alert]:
         return (
             self.db.query(Alert)
-            .filter(Alert.created_by == user_id)
+            .filter(Alert.user_id == user_id)
             .order_by(Alert.id.desc())
             .all()
         )
@@ -57,7 +65,7 @@ class AlertRepository:
     def list_active(self) -> list[Alert]:
         return (
             self.db.query(Alert)
-            .filter(Alert.is_active == True)  # noqa: E712
+            .filter(Alert.is_active.is_(True))
             .order_by(Alert.id.desc())
             .all()
         )
@@ -65,10 +73,10 @@ class AlertRepository:
     def get_by_id(self, alert_id: int) -> Alert | None:
         return self.db.query(Alert).filter(Alert.id == alert_id).first()
 
-    def get_by_id_created_by(self, alert_id: int, user_id: int) -> Alert | None:
+    def get_by_id_for_user(self, alert_id: int, user_id: int) -> Alert | None:
         return (
             self.db.query(Alert)
-            .filter(Alert.id == alert_id, Alert.created_by == user_id)
+            .filter(Alert.id == alert_id, Alert.user_id == user_id)
             .first()
         )
 
@@ -85,11 +93,20 @@ class AlertRepository:
         self.db.delete(alert)
         self.db.commit()
 
-    def count_by_category(self) -> list[dict]:
+    def count_by_category_code(self) -> list[dict]:
+        """Cuenta alertas agrupadas por el primer ``code`` de ``categories``.
+
+        Como ``categories`` es un JSONB array de objetos, se usa la primera
+        categoría como representativa para el dashboard.
+        """
+        # Postgres: extract first category code via jsonb operators.
+        first_code = func.coalesce(
+            Alert.categories[0]["code"].astext, "uncategorized"
+        ).label("code")
         rows = (
-            self.db.query(Alert.category, func.count(Alert.id).label("count"))
-            .group_by(Alert.category)
+            self.db.query(first_code, func.count(Alert.id).label("count"))
+            .group_by(first_code)
             .order_by(func.count(Alert.id).desc())
             .all()
         )
-        return [{"category": r.category, "count": r.count} for r in rows]
+        return [{"category": r.code, "count": r.count} for r in rows]

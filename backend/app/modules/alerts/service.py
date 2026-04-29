@@ -1,9 +1,45 @@
-"""Servicio del módulo alerts: lógica de negocio relacionada con alertas y reglas de coincidencia."""
+"""Servicio del módulo alerts.
+
+Adaptado al schema oficial (T6.4).
+"""
 
 from fastapi import HTTPException, status
 
+from app.core.iptc import IPTC_CATEGORIES
 from app.modules.alerts.models import Alert
 from app.modules.alerts.repository import AlertRepository
+
+
+def _normalize_categories(categories: list) -> list[dict]:
+    """Normalize categories list of objects/dicts into [{code, label}]."""
+    cleaned: list[dict] = []
+    seen: set[str] = set()
+    for entry in categories or []:
+        if hasattr(entry, "model_dump"):
+            data = entry.model_dump()
+        elif isinstance(entry, dict):
+            data = entry
+        else:
+            continue
+        code = (data.get("code") or "").strip().lower()
+        if not code or code in seen:
+            continue
+        seen.add(code)
+        label = (data.get("label") or IPTC_CATEGORIES.get(code) or code).strip()
+        cleaned.append({"code": code, "label": label})
+    return cleaned
+
+
+def _normalize_id_list(values: list) -> list[str]:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for value in values or []:
+        text = str(value).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned
 
 
 class AlertService:
@@ -12,14 +48,14 @@ class AlertService:
     def __init__(self, repository: AlertRepository):
         self.repository = repository
 
-    def list_alerts(self, user_id: int):
+    def list_alerts_for_user(self, user_id: int):
         return self.repository.list_for_user(user_id)
 
     def list_active_alerts(self) -> list[Alert]:
         return self.repository.list_active()
 
     def get_alert(self, alert_id: int, user_id: int) -> Alert:
-        alert = self.repository.get_by_id_created_by(alert_id, user_id)
+        alert = self.repository.get_by_id_for_user(alert_id, user_id)
         if not alert:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -36,43 +72,43 @@ class AlertService:
 
         return self.repository.create(
             name=data.name.strip(),
-            keyword=data.keyword.strip(),
-            expanded_keywords=[
-                item.strip()
-                for item in (data.expanded_keywords or [])
-                if item and item.strip()
-            ],
-            category=data.category,
-            source_ids=data.source_ids or [],
+            descriptors=list(data.descriptors or []),
+            categories=_normalize_categories(data.categories or []),
+            rss_channels_ids=_normalize_id_list(data.rss_channels_ids or []),
+            information_sources_ids=_normalize_id_list(data.information_sources_ids or []),
             cron_expression=data.cron_expression,
-            notify_in_app=bool(data.notify_in_app),
-            notify_email=bool(data.notify_email),
-            created_by=user_id,
+            user_id=user_id,
+            keyword=getattr(data, "keyword", None),
+            notify_in_app=bool(getattr(data, "notify_in_app", True)),
+            notify_email=bool(getattr(data, "notify_email", False)),
+            is_active=True,
         )
 
     def update_alert(self, alert_id: int, data, user_id: int) -> Alert:
         alert = self.get_alert(alert_id, user_id)
 
-        fields = {}
-        if hasattr(data, "name") and data.name is not None:
+        fields: dict = {}
+        if getattr(data, "name", None) is not None:
             fields["name"] = data.name.strip()
-        if hasattr(data, "keyword") and data.keyword is not None:
-            fields["keyword"] = data.keyword.strip()
-        if hasattr(data, "expanded_keywords") and data.expanded_keywords is not None:
-            fields["expanded_keywords"] = [
-                item.strip()
-                for item in data.expanded_keywords
-                if item and item.strip()
-            ]
-        if hasattr(data, "category") and data.category is not None:
-            fields["category"] = data.category
-        if hasattr(data, "source_ids") and data.source_ids is not None:
-            fields["source_ids"] = data.source_ids
-        if hasattr(data, "notify_in_app") and data.notify_in_app is not None:
+        if getattr(data, "descriptors", None) is not None:
+            fields["descriptors"] = list(data.descriptors)
+        if getattr(data, "categories", None) is not None:
+            fields["categories"] = _normalize_categories(data.categories)
+        if getattr(data, "rss_channels_ids", None) is not None:
+            fields["rss_channels_ids"] = _normalize_id_list(data.rss_channels_ids)
+        if getattr(data, "information_sources_ids", None) is not None:
+            fields["information_sources_ids"] = _normalize_id_list(
+                data.information_sources_ids
+            )
+        if getattr(data, "cron_expression", None) is not None:
+            fields["cron_expression"] = data.cron_expression
+        if getattr(data, "keyword", None) is not None:
+            fields["keyword"] = data.keyword
+        if getattr(data, "notify_in_app", None) is not None:
             fields["notify_in_app"] = bool(data.notify_in_app)
-        if hasattr(data, "notify_email") and data.notify_email is not None:
+        if getattr(data, "notify_email", None) is not None:
             fields["notify_email"] = bool(data.notify_email)
-        if hasattr(data, "is_active") and data.is_active is not None:
+        if getattr(data, "is_active", None) is not None:
             fields["is_active"] = bool(data.is_active)
 
         return self.repository.update(alert, **fields)

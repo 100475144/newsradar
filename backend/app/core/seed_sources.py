@@ -1,16 +1,21 @@
-"""Default RSS catalog with 100+ channels across 10+ media outlets and all IPTC categories."""
+"""Default RSS catalog: 100+ canales en 14+ medios cubriendo las 17 categorías IPTC.
+
+Adaptado al modelo split (T6.3): siembra ``InformationSource`` (medios) y
+``RSSChannel`` (feeds) referenciando ``Category`` por id.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Iterable
+from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
 from app.core.iptc import IPTC_CATEGORY_CODES
-from app.modules.sources.models import Source
+from app.modules.sources.models import Category, InformationSource, RSSChannel
 
 
-# Each tuple stores: ("Medium - Channel", rss_url, iptc_category_code)
+# Cada tupla: ("Medium - Channel", rss_url, iptc_category_code)
 RSS_SEEDS_RAW: list[tuple[str, str, str]] = [
     # BBC
     ("BBC - Top Stories", "https://feeds.bbci.co.uk/news/rss.xml", "society"),
@@ -45,6 +50,7 @@ RSS_SEEDS_RAW: list[tuple[str, str, str]] = [
     ("The Guardian - Society", "https://www.theguardian.com/society/rss", "society"),
     ("The Guardian - Law", "https://www.theguardian.com/law/rss", "crime_law_justice"),
     ("The Guardian - Weather", "https://www.theguardian.com/weather/rss", "weather"),
+    ("The Guardian - UK News", "https://www.theguardian.com/uk-news/rss", "society"),
 
     # El Pais
     ("El Pais - Portada", "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada", "society"),
@@ -69,7 +75,6 @@ RSS_SEEDS_RAW: list[tuple[str, str, str]] = [
 
     # Al Jazeera
     ("Al Jazeera - News", "https://www.aljazeera.com/xml/rss/all.xml", "conflict_war_peace"),
-    ("The Guardian - UK News", "https://www.theguardian.com/uk-news/rss", "society"),
 
     # NPR
     ("NPR - News", "https://feeds.npr.org/1001/rss.xml", "society"),
@@ -142,7 +147,7 @@ RSS_SEEDS_RAW: list[tuple[str, str, str]] = [
     ("The Independent - Travel", "https://www.independent.co.uk/travel/rss", "lifestyle_leisure"),
     ("The Independent - Climate", "https://www.independent.co.uk/climate-change/rss", "environment"),
 
-    # Extra coverage for remaining IPTC branches
+    # Cobertura extra de IPTC branches
     ("ILO - News", "https://www.ilo.org/resource/news/rss", "labour"),
     ("AccuWeather - Top Stories", "https://rss.accuweather.com/rss/liveweather_rss.asp?metric=1&locCode=EUR", "weather"),
     ("ReliefWeb - Disasters", "https://reliefweb.int/updates/rss.xml", "disaster_accident"),
@@ -159,6 +164,14 @@ def _split_seed_name(display_name: str) -> tuple[str, str]:
         medium_name, channel_name = display_name.split(" - ", 1)
         return medium_name.strip(), channel_name.strip()
     return display_name.strip(), display_name.strip()
+
+
+def _derive_medium_url(rss_url: str) -> str:
+    """Derive a medium homepage URL from one of its feed URLs."""
+    parts = urlsplit(rss_url)
+    if not parts.scheme or not parts.netloc:
+        return rss_url
+    return f"{parts.scheme}://{parts.netloc}"
 
 
 def get_seed_sources() -> list[dict[str, str]]:
@@ -201,39 +214,78 @@ def get_seed_catalog_summary() -> dict[str, int | bool]:
 
 
 def seed_default_sources(db: Session) -> int:
-    """Ensure the global default RSS catalog exists exactly once per URL."""
-    existing_urls = {
-        row[0]
-        for row in db.query(Source.url).all()
+    """Garantiza que el catálogo global de RSS exista (idempotente).
+
+    Crea/usa categorías IPTC, ``InformationSource`` por cada medio y
+    ``RSSChannel`` por cada feed, evitando duplicados por URL.
+    """
+    # Cache de categorías por code
+    categories_by_name = {
+        cat.name: cat
+        for cat in db.query(Category).all()
+    }
+    # Asegurar todas las IPTC primer nivel
+    for code in IPTC_CATEGORY_CODES:
+        if code not in categories_by_name:
+            cat = Category(name=code, source="IPTC")
+            db.add(cat)
+            db.flush()
+            categories_by_name[code] = cat
+
+    # Cache de information sources por nombre
+    media_by_name = {
+        m.name: m
+        for m in db.query(InformationSource).all()
     }
 
-    sources_to_add: list[Source] = []
+    existing_channel_urls = {
+        row[0]
+        for row in db.query(RSSChannel.url).all()
+    }
+
+    new_channels = 0
     for seed in get_seed_sources():
-        if seed["url"] in existing_urls:
+        if seed["url"] in existing_channel_urls:
             continue
 
-        sources_to_add.append(
-            Source(
-                medium_name=seed["medium_name"],
-                name=seed["name"],
-                url=seed["url"],
-                category=seed["category"],
-                is_active=True,
+        # Asegurar el medio
+        medium = media_by_name.get(seed["medium_name"])
+        if medium is None:
+            medium = InformationSource(
+                name=seed["medium_name"],
+                url=_derive_medium_url(seed["url"]),
             )
+            db.add(medium)
+            db.flush()
+            media_by_name[seed["medium_name"]] = medium
+
+        # Categoría
+        category = categories_by_name.get(seed["category"])
+        if category is None:
+            category = Category(name=seed["category"], source="IPTC")
+            db.add(category)
+            db.flush()
+            categories_by_name[seed["category"]] = category
+
+        channel = RSSChannel(
+            url=seed["url"],
+            information_source_id=medium.id,
+            category_id=category.id,
+            name=seed["name"],
+            is_active=True,
         )
-        existing_urls.add(seed["url"])
+        db.add(channel)
+        existing_channel_urls.add(seed["url"])
+        new_channels += 1
 
-    if not sources_to_add:
-        return 0
+    if new_channels:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
-    try:
-        db.add_all(sources_to_add)
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-
-    return len(sources_to_add)
+    return new_channels
 
 
 def iter_seed_mediums() -> Iterable[str]:

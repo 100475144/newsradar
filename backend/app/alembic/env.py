@@ -29,7 +29,7 @@ from alembic import context
 # detect changes in all the database tables
 from app.core.database import Base
 from app.modules.auth.models import EmailVerificationToken, Role, User, user_roles
-from app.modules.sources.models import Source
+from app.modules.sources.models import Category, InformationSource, RSSChannel
 from app.modules.alerts.models import Alert
 from app.modules.notifications.models import Notification
 from app.modules.news.models import News
