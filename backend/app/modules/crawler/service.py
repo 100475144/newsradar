@@ -4,6 +4,7 @@ Adaptado al modelo split (T6.3): trabaja con ``RSSChannel`` y ``Category`` en
 lugar de la tabla ``Source`` antigua.
 """
 
+import logging
 from datetime import datetime
 
 import feedparser
@@ -14,6 +15,8 @@ from app.modules.news.service import NewsService
 from app.modules.sources.models import Category, InformationSource, RSSChannel
 
 from .schemas import CrawlResult, ParsedFeedItem, SourceStub
+
+logger = logging.getLogger(__name__)
 
 
 class CrawlerService:
@@ -61,7 +64,17 @@ class CrawlerService:
         for entry in feed.entries:
             fetched_items += 1
 
-            item = self._parse_entry(entry, source, feed_language)
+            try:
+                item = self._parse_entry(entry, source, feed_language)
+            except Exception:
+                # Entries malformados (sin título, sin link, etc.) se saltan
+                # para que un único item roto no rompa el ciclo entero.
+                logger.warning(
+                    "Skipping malformed entry from %s",
+                    source.url,
+                    exc_info=False,
+                )
+                continue
             category, classification_origin = self._resolve_initial_classification(
                 item_category=item.category,
                 source_category=source.category,
@@ -80,7 +93,15 @@ class CrawlerService:
             )
 
             before = self.news_service.repository.count_by_source(source.id)
-            self.news_service.create_news_from_crawler(payload)
+            try:
+                self.news_service.create_news_from_crawler(payload)
+            except Exception:
+                logger.warning(
+                    "Failed to persist entry from %s",
+                    source.url,
+                    exc_info=False,
+                )
+                continue
             after = self.news_service.repository.count_by_source(source.id)
 
             if after > before:

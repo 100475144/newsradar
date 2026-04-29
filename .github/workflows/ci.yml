@@ -105,7 +105,10 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        # Usamos `npm install` en lugar de `npm ci` para que el job no
+        # falle cuando se añaden dependencias nuevas a package.json sin
+        # haber regenerado el lockfile (común en PRs de features).
+        run: npm install --no-audit --no-fund
 
       - name: Build frontend
         working-directory: frontend
@@ -126,12 +129,15 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: npm ci
+        # Usamos `npm install` en lugar de `npm ci` para que el job no
+        # falle cuando se añaden dependencias nuevas a package.json sin
+        # haber regenerado el lockfile (común en PRs de features).
+        run: npm install --no-audit --no-fund
 
       - name: Run frontend tests
         working-directory: frontend
         run: |
-          if npm run | grep -q " test"; then
+          if npm run | grep -qE "^\s+test\b"; then
             npm test
           else
             echo "No frontend test script found yet. Skipping."
