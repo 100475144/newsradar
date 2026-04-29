@@ -1,597 +1,180 @@
+# NEWSRADAR — Roadmap
 
-| Sprint       | Objetivo                       | Estado      |
-| ------------ | ------------------------------ |-------------|
-| Sprint 0     | Preparación de infraestructura | [completed] |
-| Sprint 1     | Usuarios y autenticación       | [completed] |
-| Sprint 2     | Gestión de fuentes RSS         | [completed] |
-| Sprint 3     | Gestión de alertas             | [completed] |
-| Sprint 4     | Monitorización de noticias     | [completed] |
-| Sprint 5     | Notificaciones + API REST      | [completed] |
-| Sprint 6     | Dashboard y visualización      | [ongoing]   |
-| Sprint 7     | Testing, CI/CD, calidad        | [ongoing]   |
-| Sprint 8     | Documentación                  | [ongoing]   |
-| Verificación | Pruebas finales                |             |
-
-
-Personas:
-
-**P1 — Arquitectura + Auth**
-**P2 — Sources**
-**P3 — News + Crawler**
-**P4 — Alerts + Matching + Notifications**
-**P5 — Frontend**
-**P6 — Infraestructura + DB + Testing + CI**
-
+> Plan de sprints y fases del proyecto. Para el estado vivo de tareas
+> concretas y reparto por persona, ver [`docs/REPARTO_FINAL.md`](docs/REPARTO_FINAL.md).
 
 ---
 
-# SPRINT 0 — Preparación de infraestructura
+## Estado de los sprints
 
-### Objetivo
-
-Dejar el proyecto listo para que todos puedan empezar a programar sin problemas.
-
----
-
-### P6 — Infraestructura
-
-**Qué hace**
-
-* terminar `docker-compose`
-* configurar PostgreSQL
-* conectar backend con DB
-* comprobar que todo levanta con `docker compose up`
-
-**Explicación simple**
-
-> Básicamente deja todo listo para que cualquiera clone el repo y el proyecto funcione.
+| Sprint       | Objetivo                                  | Estado          |
+| ------------ | ----------------------------------------- |-----------------|
+| Sprint 0     | Preparación de infraestructura            | ✅ Completado    |
+| Sprint 1     | Usuarios y autenticación                  | ✅ Completado    |
+| Sprint 2     | Gestión de fuentes RSS                    | ✅ Completado    |
+| Sprint 3     | Gestión de alertas                        | ✅ Completado    |
+| Sprint 4     | Monitorización de noticias (crawler)      | ✅ Completado    |
+| Sprint 5     | Notificaciones + API REST                 | ✅ Completado    |
+| Sprint 6     | Dashboard y visualización                 | ✅ Completado    |
+| Sprint 7     | Testing, CI/CD y calidad                  | 🟡 Parcial — CD pendiente (CD1, CD2, CD3) |
+| Sprint 8     | Documentación                             | ✅ Completado    |
+| **Fase 0**   | Adenda oficial CAMBIO #1/#1bis            | ✅ Completado    |
+| **Fase 1**   | Refactor masivo CAMBIO #3 (`main.py` oficial) | ✅ Completado |
+| **Fase 2**   | Dashboard per-user + ampliación tests + docs técnicas | ✅ Completado |
+| **Fase 3**   | Tests frontend + crawler + trazabilidad + prompts IA | ✅ Completado (sin CDx) |
 
 ---
 
-### P1 — Base backend
+## Roles del equipo
 
-**Qué hace**
-
-* crear `FastAPI app`
-* `main.py`
-* router principal
-* endpoint `/health`
-* config básica
-
-**Explicación simple**
-
-> Deja el backend arrancando aunque todavía no haga nada útil.
+| Rol | Persona | Foco principal |
+|---|---|---|
+| **P1** | Cristina (100475144) | Arquitectura backend + Auth + Documentación + alineación API oficial |
+| **P2** | Manso (100474286) | Sources + Frontend UX + Dashboard |
+| **P3** | 100475101 | News + Crawler + Scheduler |
+| **P4** | 100475102 | Alerts + Matching + Notifications |
+| **P5** | Manso (100474286) | Frontend |
+| **P6** | Adrian (100495924) | Infraestructura + DB + Testing + CI |
+| **(extra)** | Javier Martín | CI/CD transversal + reviews |
 
 ---
 
-### P5 — Base frontend
+## Sprints originales (resumen)
 
-**Qué hace**
+### Sprint 0 — Infraestructura
 
-* inicializar React + Vite
-* crear layout básico
-* conectar frontend con `/health`
+Dejar el proyecto listo para que todos puedan empezar a programar.
 
-**Explicación simple**
+- Docker Compose con backend + frontend + Postgres
+- FastAPI app esqueleto con endpoint `/health`
+- React + Vite arrancando y consumiendo `/health`
+- Estructura modular de los 6 módulos backend (auth, sources, news, crawler, alerts, notifications)
 
-> Deja el frontend funcionando y comprobando que el backend responde.
+### Sprint 1 — Auth y usuarios
 
----
+- Modelo `User`, registro, login, JWT, endpoint `/me`
+- Verificación de email con token de 24 h
+- Roles `admin` y `gestor` (rol `lector` retirado por adenda)
+- UI de login y registro
+- Migraciones Alembic de `users` y `roles`
 
-### P2, P3, P4 — Estructura de módulos
+### Sprint 2 — Gestión de fuentes RSS
 
-Cada uno crea su módulo vacío:
+- CRUD de canales RSS asociados a un medio
+- Validación de URL y categoría IPTC
+- UI completa para listar/crear/editar/borrar fuentes
+- Catálogo inicial sembrado: 110 canales en 20 medios cubriendo las 17 categorías IPTC
 
-P2
+### Sprint 3 — Gestión de alertas
 
-```
-modules/sources
-```
+- Modelo `Alert` con descriptors, categorías, filtros por canal/medio, cron
+- CRUD completo + activar/desactivar
+- Recommender de descriptors (3-10 sinónimos por keyword)
+- Límite 20 alertas por gestor
 
-P3
+### Sprint 4 — Crawler
 
-```
-modules/news
-modules/crawler
-```
+- Cliente RSS con feedparser
+- Scheduler con APScheduler y cron expression configurable
+- Deduplicación por external_id, link y content_hash
+- Persistencia en tabla `news`
 
-P4
+### Sprint 5 — Notificaciones + API
 
-```
-modules/alerts
-modules/notifications
-```
+- Motor de matching que clasifica y dispara notificaciones
+- Notificaciones in-app + email (SMTP via MailHog en dev)
+- Dedupe por `(user_id, alert_id, news_id)`
+- Endpoints anidados oficiales `/users/{u}/alerts/{a}/notifications`
 
-**Explicación simple**
+### Sprint 6 — Dashboard
 
-> Solo crean carpetas y archivos base para empezar luego.
+- Dashboard con stats globales y per-user
+- Wordcloud calculada con las noticias matcheadas por las alertas del usuario
+- i18n ES/EN con detector automático
 
----
+### Sprint 7 — Testing y CI
 
-✅ Resultado Sprint 0
+- pytest + pytest-cov (~75% cobertura backend)
+- vitest para frontend (smoke tests de páginas clave)
+- GitHub Actions (CI: `backend-test`, `backend-lint`, `frontend-build`, `frontend-test`)
+- Conftest blindado contra BD producción
+- 🟡 **Pendiente:** CD pipeline + SonarQube + doc despliegue máquina limpia (asignados a Javier)
 
-* proyecto arranca
-* frontend y backend conectan
-* base de datos lista
-* estructura modular creada
+### Sprint 8 — Documentación
 
----
-
-# SPRINT 1 — Usuarios y autenticación
-
-### Objetivo
-
-Cerrar login y registro para que todo lo demás use usuarios reales.
-
----
-
-### P1 — Auth completo
-
-**Qué hace**
-
-* modelo `User`
-* registro
-* login
-* JWT
-* endpoint `/me`
-* proteger endpoints
-
-**Explicación simple**
-
-> Hace todo el sistema de login.
+- `docs/architecture.md`, `api-design.md`, `database-design.md`, `extension-guide.md`, `testing-strategy.md`
+- 3 diagramas Mermaid en `docs/diagrams/`
+- ADRs en `docs/adr/`
+- `docs/demo.md` reproducible
+- Trazabilidad requisitos↔código↔tests
+- Registro de prompts IA
 
 ---
 
-### P6 — Soporte base de datos
+## Fases de cierre (post-adendas oficiales)
 
-**Qué hace**
+A mitad del proyecto el profesor publicó adendas y dudas que obligaron a un refactor masivo. Para gestionarlo, se ejecutaron 4 fases de cierre adicionales:
 
-* migración de `users`
-* setup migraciones
-* verificar conexión DB
+### Fase 0 — Cumplir adendas CAMBIO #1 y #1bis
 
-**Explicación simple**
+- T1: eliminar rol `lector`
+- T6.1/T6.2: prefijo `/api/v1` y `Role` como entidad propia
+- T7/T9/T10: verificaciones de atomicidad crawler, recommender 3-10, límite 20 alertas
+- TS1: blindaje conftest
 
-> Se asegura de que las tablas se creen bien.
+### Fase 1 — Alinear API con `main.py` oficial (CAMBIO #3)
 
----
+| Sub-tarea | Cambio |
+|---|---|
+| T6.3 | Sources split → `Category` + `InformationSource` + `RSSChannel` |
+| T6.4 | Alerts oficial: `descriptors`, `categories[]`, `rss_channels_ids[]`, `information_sources_ids[]` |
+| T6.5 | Notifications con `timestamp + metrics` |
+| T6.6 | Stats endpoint nuevo |
+| T6.7 | User: `organization` obligatoria + tamaños 120/180 + CRUD oficial |
 
-### P5 — UI de login
+6 migraciones Alembic con backfill, sin pérdida de datos.
 
-**Qué hace**
+### Fase 2 — Dashboard per-user + tests + docs
 
-* página login
-* página register
-* guardar token
-* proteger rutas privadas
+- T4/T5: dashboards filtrados por las alertas del user logueado (CAMBIO #2)
+- TS2: +16 tests backend con helpers compartidos
+- TS3: pytest-cov en CI con artefactos
+- D1: ADRs movidos a `docs/adr`
+- D2: 3 diagramas Mermaid
+- D3: 5 documentos técnicos
+- D6: `.env.example` raíz + backend
 
-**Explicación simple**
+### Fase 3 — Cierre (sin CDx)
 
-> Hace las pantallas para iniciar sesión.
-
----
-
-### P2, P3, P4
-
-Adaptan sus módulos para asumir:
-
-```
-current_user
-```
-
-**Explicación simple**
-
-> Preparan sus módulos para que funcionen con usuarios.
-
----
-
-✅ Resultado Sprint 1
-
-* usuarios pueden registrarse
-* login funciona
-* frontend usa auth
+- TS4: vitest + 7 smoke tests frontend
+- TS5: 6 tests crawler con feedparser mockeado
+- D4: trazabilidad completa de los 40 checks
+- D5: registro de prompts IA por fase
 
 ---
 
-# SPRINT 2 — Gestión de fuentes RSS
+## Verificación final
 
-### Objetivo
+Flujo completo end-to-end probado:
 
-Permitir añadir y gestionar feeds RSS.
-
----
-
-### P2 — Sources completo
-
-**Qué hace**
-
-* modelo `Source`
-* CRUD de fuentes
-* validar URL RSS
-
-Endpoints:
-
-```
-POST /sources
-GET /sources
-PUT /sources
-DELETE /sources
-```
-
-**Explicación simple**
-
-> Hace la parte donde el usuario añade feeds RSS.
+1. ✅ Registro de usuario (organization obligatoria)
+2. ✅ Verificación de email (24h, vía MailHog en dev)
+3. ✅ Login (JWT, role_ids: [2] = gestor)
+4. ✅ Crear alerta (schema oficial: descriptors, categories[], cron)
+5. ✅ Crawler ejecuta cron `*/5 * * * *` y captura news
+6. ✅ Backfill matching: la alerta nueva genera notificaciones para news pre-existentes
+7. ✅ Notificación in-app + email entregado en MailHog
+8. ✅ Dashboard del user muestra solo SUS noticias y categorías
+9. ✅ `/news/me/wordcloud` solo con palabras de news matcheadas
 
 ---
 
-### P6 — Migraciones
-
-**Qué hace**
-
-* tabla `sources`
-* constraints
-
----
-
-### P5 — UI Sources
-
-**Qué hace**
-
-* página fuentes
-* añadir fuente
-* editar fuente
-* eliminar fuente
-
----
-
-### P1 — Revisión backend
-
-**Qué hace**
-
-* revisar endpoints
-* seguridad
-* coherencia
-
----
-
-### P3 — Preparar integración crawler
-
-**Qué hace**
-
-* preparar función que leerá sources activas
-
----
-
-### P4
-
-Nada grande todavía.
-
----
-
-✅ Resultado Sprint 2
-
-El usuario puede:
-
-* añadir RSS
-* ver fuentes guardadas
-
----
-
-# SPRINT 3 — Gestión de alertas
-
-### Objetivo
-
-Permitir al usuario crear alertas.
-
----
-
-### P4 — Alerts completo
-
-**Qué hace**
-
-* modelo `Alert`
-* CRUD alertas
-* alertas activas/inactivas
-
-**Explicación simple**
-
-> Permite decir “avísame cuando salga una noticia sobre X”.
-
----
-
-### P6 — Migración
-
-Tabla:
-
-```
-alerts
-```
-
----
-
-### P5 — UI Alerts
-
-**Qué hace**
-
-* página alertas
-* crear alerta
-* editar alerta
-* eliminar alerta
-
----
-
-### P1
-
-Revisión de permisos.
-
----
-
-### P3
-
-Prepara interfaz para matching.
-
----
-
-✅ Resultado Sprint 3
-
-Usuarios pueden crear alertas.
-
----
-
-# SPRINT 4 — Monitorización de noticias
-
-### Objetivo
-
-Meter noticias reales en el sistema.
-
----
-
-### P3 — Crawler completo
-
-**Qué hace**
-
-* cliente RSS
-* parser
-* scheduler
-* leer feeds
-* guardar noticias
-* evitar duplicados
-
-**Explicación simple**
-
-> Hace el robot que va leyendo noticias automáticamente.
-
----
-
-### P2
-
-Integración con `sources`.
-
----
-
-### P6
-
-Configura intervalo del crawler.
-
----
-
-### P5 — UI noticias
-
-Página para listar noticias.
-
----
-
-### P4
-
-Prepara matching.
-
----
-
-✅ Resultado Sprint 4
-
-Flujo:
-
-```
-RSS -> crawler -> news database
-```
-
----
-
-# SPRINT 5 — Notificaciones + API
-
-### Objetivo
-
-Cerrar el valor principal del sistema.
-
----
-
-### P4 — Matching
-
-**Qué hace**
-
-* comparar alertas con noticias
-* buscar keywords
-* generar notificaciones
-
-**Explicación simple**
-
-> Detecta si una noticia coincide con una alerta.
-
----
-
-### P3
-
-Integra crawler con matching.
-
----
-
-### P4 — Notifications
-
-Modelo:
-
-```
-Notification
-```
-
----
-
-### P5 — UI Notifications
-
-Página de notificaciones.
-
----
-
-### P6
-
-Migración `notifications`.
-
----
-
-### P1
-
-Revisión backend.
-
----
-
-✅ Resultado Sprint 5
-
-Flujo completo:
-
-```
-RSS
- -> crawler
- -> news
- -> matching
- -> notifications
-```
-
----
-
-# SPRINT 6 — Dashboard
-
-### Objetivo
-
-Dejar una interfaz decente para usar el sistema.
-
----
-
-### P5 — Dashboard
-
-Pantallas:
-
-* noticias
-* alertas
-* fuentes
-* notificaciones
-
-**Explicación simple**
-
-> Hace que todo lo anterior se pueda usar fácil desde el navegador.
-
----
-
-### Backend (P1-P4)
-
-Pequeños ajustes API.
-
----
-
-### P6
-
-Mejora Docker si hace falta.
-
----
-
-# SPRINT 7 — Testing y calidad
-
-### Objetivo
-
-Asegurar que el sistema es robusto.
-
----
-
-### P1
-
-tests auth
-
-### P2
-
-tests sources
-
-### P3
-
-tests crawler/news
-
-### P4
-
-tests alerts/matching
-
-### P6
-
-infraestructura de testing
-
-### P5
-
-pruebas manuales UI
-
----
-
-# SPRINT 8 — Documentación
-
-Como dijiste:
-
-> cada uno documenta lo suyo.
-
-### P1
-
-documenta auth + arquitectura backend
-
-### P2
-
-documenta sources
-
-### P3
-
-documenta crawler
-
-### P4
-
-documenta alerts y matching
-
-### P5
-
-documenta frontend
-
-### P6
-
-documenta despliegue
-
----
-
-# Verificación final
-
-Todos prueban el flujo completo:
-
-1. register
-2. login
-3. crear source
-4. crear alerta
-5. ejecutar crawler
-6. guardar noticias
-7. generar notificación
-8. ver notificación en UI
-
----
-
-# Resultado
-
-Con este plan:
-
-* sigue **exactamente vuestra planificación**
-* los **6 trabajan en paralelo**
-* cada uno tiene **ownership claro**
-* la arquitectura **sigue siendo modular**
-* los cambios futuros serán **muy rápidos**
-
----
-
+## Lo que queda para la entrega final (40/40 ✅)
+
+| ID | Tarea | Responsable |
+|---|---|---|
+| **CD1** | Pipeline despliegue (build + push imágenes a `ghcr.io`) | Javier |
+| **CD2** | Documentar despliegue máquina limpia en `docs/deployment.md` | Javier |
+| **CD3** | SonarCloud / métricas calidad | Javier |
+
+Ver detalle vivo en [`docs/REPARTO_FINAL.md`](docs/REPARTO_FINAL.md).

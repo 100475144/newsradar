@@ -1,6 +1,6 @@
 # Reparto de tareas finales — NEWSRADAR
 
-**Última actualización:** 30 abril 2026 (tras cerrar Fase 3 sin CDx).
+**Última actualización:** 30 abril 2026 (todas las fases mergeadas a `main` salvo CDx).
 
 Este documento se cruza con:
 - `DOSS-CHECKLIST_2026` (40 checks de proyecto + 26 de proceso)
@@ -9,46 +9,48 @@ Este documento se cruza con:
 - Dudas 21-abr y 28-abr (CAMBIO #2: dashboards per-user)
 - Correo 29-abr + `main.py` oficial del aula global (CAMBIO #3)
 
-Cada persona trabaja en `feature/<nombre>-<tema>` y abre PR a `main` con review de mínimo 1 compañero.
+Reglas de trabajo: rama `feature/<nombre>-<tema>`, PR a `main` con review mínima de 1 compañero, **CI verde antes de mergear**, sin push directo a `main`.
 
 ---
 
-## ✅ Estado global de las fases
+## ✅ Estado global de las fases (todas mergeadas a `main`)
 
-| Fase | Contenido | Estado |
-|---|---|---|
-| **Fase 0** | Infra base + cumplir adenda CAMBIO #1/#1bis + verificaciones | ✅ Cerrada (rama `feature/phase0-cristina`) |
-| **Fase 1** | Refactor masivo para alinear API con `main.py` oficial (CAMBIO #3) | ✅ Cerrada (rama `feature/phase1-cristina-t6.3-t6.4`) |
-| **Fase 2** | Dashboard per-user + tests ampliados + cobertura + documentación + ADRs + diagramas + .env.example | ✅ Cerrada (rama `feature/phase2-cristina`) |
-| **Fase 3** | Tests frontend + CD + Sonar + traceability + prompts IA | 🟡 Parcial (TS4 / TS5 / D4 / D5 ✅, CDx pendiente) |
+| Fase | Contenido | Estado | PR |
+|---|---|---|---|
+| **Fase 0** | Adendas CAMBIO #1/#1bis + verificaciones (T1, T6.1, T6.2, T7, T9, T10, TS1) | ✅ Mergeada | #10/#11 |
+| **Fase 1** | Refactor masivo CAMBIO #3 (T6.3, T6.4, T6.5, T6.6, T6.7) | ✅ Mergeada | #11 |
+| **Fase 2** | Dashboard per-user + tests + cobertura + ADRs + diagramas + docs (T4, T5, TS2, TS3, D1-D3, D6) | ✅ Mergeada | #11 |
+| **Fase 3** | Tests frontend + crawler + trazabilidad + prompts IA (TS4, TS5, D4, D5) | ✅ Mergeada | #12 |
+| **Fixes CI** | SMTP en CI + `localStorage` en setup vitest + assert robusto crawler | ✅ Mergeada | #13 |
+| **CDx** | CD pipeline + SonarQube + deployment doc | 🔴 Pendiente | — |
 
 ---
 
 ## 📢 Cambios oficiales sobre el enunciado (todos cubiertos)
 
-### CAMBIO #1 — Desaparece el rol "lector" — ✅ Aplicado en Fase 0
-- Solo existen gestores (más admin = gestor inicial).
-- El **API debe seguir soportando** creación y asignación de roles → endpoints admin se mantienen.
-- Cualquier UX condicionada por `role == "lector"` eliminada.
+### CAMBIO #1 — Desaparece el rol "lector" — ✅ Aplicado
+- Solo existen `gestor` y `admin` (= gestor inicial).
+- El **API mantiene** los endpoints de creación y asignación de roles.
+- Todas las restricciones UX por `role == "lector"` eliminadas.
 
-### CAMBIO #1bis — Asignación automática de rol "gestor" — ✅ Aplicado en Fase 0
+### CAMBIO #1bis — Asignación automática de rol "gestor" — ✅ Aplicado
 > *"Todo nuevo usuario tendrá el rol de 'gestor' automáticamente. Eso sí, el rol de 'admin' debe existir."*
 
 - El registro nunca acepta `role` ni `role_ids` en el body.
-- El servidor asigna `gestor` automáticamente vía `role_ids` (T6.2).
+- El servidor asigna `gestor` automáticamente vía `role_ids`.
 - El rol `admin` se conserva (seed inicial + endpoints admin).
 
-### CAMBIO #2 — Dashboard/WordCloud/Stats filtran por alertas del usuario logueado — 🟡 Pendiente Fase 2
+### CAMBIO #2 — Dashboard/WordCloud/Stats per-user — ✅ Aplicado
 > *"La información se genera solamente con los datos del usuario que está logueado."*
 
-- Alertas y notificaciones ya son per-usuario tras T6.4.
-- Sources y News siguen globales (B0/B3 vigentes).
-- **Pendiente**: el frontend debe filtrar dashboard, wordcloud y stats por las alertas del usuario logueado (tarea **T4/T5**).
+- Alertas y notificaciones son per-usuario.
+- `/news/me/stats`, `/news/me/wordcloud`, `/alerts/me/stats` filtran por las alertas del user logueado vía subquery sobre `notifications`.
+- Sources y News siguen globales (visibles para todos).
 
-### CAMBIO #3 — La API debe cumplirse exactamente — ✅ Aplicado en Fase 1
+### CAMBIO #3 — La API matchea exactamente la oficial — ✅ Aplicado
 - El profesor entregó el `main.py` oficial.
-- **Operaciones y modelos NO se pueden cambiar.** Solo se pueden añadir endpoints auxiliares.
-- Toda la API se ha realineado: prefijo `/api/v1`, schemas, modelos, endpoints anidados, tablas split, etc.
+- **Operaciones y modelos NO se cambian.** Solo se añaden endpoints auxiliares.
+- Toda la API realineada: prefijo `/api/v1`, schemas, modelos, endpoints anidados, tablas split.
 
 ---
 
@@ -58,118 +60,120 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ pendiente
 
 | # | Check | Estado | Notas |
 |---|---|---|---|
-| 1 | Alertas sobre palabra clave | ✅ | Funciona |
-| 2 | Recomienda 3-10 sinónimos | ✅ | Recommender garantizado en Fase 0 (T9) |
-| 3 | Límite 20 alertas/gestor | ✅ | `MAX_ALERTS = 20` verificado (T10) |
-| 4 | Selección fuentes específicas | ✅ | `rss_channels_ids` + `information_sources_ids` (T6.4) |
-| 5 | Categoría IPTC primer nivel | ✅ | `categories: List[{code, label}]` (T6.4) |
+| 1 | Alertas sobre palabra clave | ✅ | `/users/{u}/alerts` con `descriptors` |
+| 2 | Recomienda 3-10 sinónimos | ✅ | Recommender garantizado con fallback genérico |
+| 3 | Límite 20 alertas/gestor | ✅ | `MAX_ALERTS = 20` + test `test_alert_max_limit_per_gestor` |
+| 4 | Selección fuentes específicas | ✅ | `rss_channels_ids` + `information_sources_ids` |
+| 5 | Categoría IPTC primer nivel | ✅ | `categories: List[{code, label}]` |
 | 6 | Cron expression | ✅ | APScheduler + `CRAWLER_CRON_EXPRESSION` |
-| 7 | Clasificación según alerta o fuente | ✅ | `resolve_news_classification` |
-| 8 | Email al detectar match | ✅ | MailHog en dev |
-| 9 | Mensaje al buzón interno | ✅ | NotificationDetailResponse |
+| 7 | Clasificación según alerta o fuente | ✅ | `_resolve_news_classification` + tests |
+| 8 | Email al detectar match | ✅ | MailHog en dev + test E2E |
+| 9 | Mensaje al buzón interno | ✅ | `NotificationDetailResponse` |
 | 10 | Título "Actualización de [alerta] en [día/hora]" | ✅ | Formato dd/mm/yyyy HH:MM |
 | 11 | Resumen del RSS en notificación | ✅ | Body de notificación incluye summary |
-| 12 | Alta de canales RSS asociados a un medio | ✅ | `/api/v1/information-sources/{id}/rss-channels` (T6.3) |
+| 12 | Alta de canales RSS asociados a un medio | ✅ | `/information-sources/{id}/rss-channels` |
 | 13 | Mínimo 100 canales | ✅ | 110 sembrados |
 | 14 | ≥10 medios diferentes | ✅ | 20 medios |
 | 15 | Canales para todas las cat IPTC | ✅ | 17 categorías cubiertas |
 | 16 | Roles "Gestor" y "Lector" definidos | ✅ | Adenda lo redujo a gestor + admin |
 | 17 | Lector bloqueado en alertas | ✅ | N/A por adenda |
-| 18 | Email + nombre + apellidos + organización | ✅ | `organization` NOT NULL en T6.7 |
+| 18 | Email + nombre + apellidos + organización | ✅ | `organization` NOT NULL |
 | 19 | Email de verificación | ✅ | Endpoint `/auth/verify-email` |
 | 20 | Token expira a 24h | ✅ | `verification_token_expire_hours=24` |
-| 21 | Admin inicial | ✅ | Seed en `_seed_admin_user` |
-| 22 | Nubes palabras por categoría | ✅ | `/news/me/wordcloud` filtra solo noticias matcheadas (T5) |
-| 23 | Nº total noticias en stats | ✅ | `/news/me/stats` per-user (T4) |
-| 24 | Alertas por categoría | ✅ | `/alerts/me/stats` per-user, integrado en dashboard (T4) |
-| 25 | i18n ES/EN | ✅ | react-i18next |
+| 21 | Admin inicial | ✅ | `_seed_admin_user` en arranque |
+| 22 | Nubes palabras por categoría | ✅ | `/news/me/wordcloud` per-user |
+| 23 | Nº total noticias en stats | ✅ | `/news/me/stats` per-user |
+| 24 | Alertas por categoría | ✅ | `/alerts/me/stats` per-user |
+| 25 | i18n ES/EN | ✅ | react-i18next con detector |
 | 26 | API REST | ✅ | FastAPI |
-| 27 | OpenAPI documentado | ✅ | Auto FastAPI; matchea oficial tras Fase 1 |
+| 27 | OpenAPI documentado | ✅ | Auto-generado en `/docs` |
 | 28 | GET /api/v1/health | ✅ | |
-| 29 | Almacena noticias y entidades | ✅ | Postgres |
-| 30 | Código en GitHub | ✅ | |
-| 31 | Documentación Markdown | ✅ | |
-| 32 | ADRs en `/docs/adr` | ✅ | Movido en Fase 2 (D1) |
-| 33 | Diagramas de arquitectura | ✅ | `docs/diagrams/architecture.md`, `sequence-notification.md`, `deployment.md` (D2) |
-| 34 | Pruebas automatizadas en CI | ✅ | CI corre 25 tests con cobertura (TS2 + TS3) |
+| 29 | Almacena noticias y entidades | ✅ | Postgres con 12 tablas |
+| 30 | Código en GitHub | ✅ | https://github.com/100475144/newsradar |
+| 31 | Documentación Markdown | ✅ | 9 docs + 3 diagramas Mermaid |
+| 32 | ADRs en `/docs/adr` | ✅ | Movidos en Fase 2 |
+| 33 | Diagramas de arquitectura | ✅ | architecture, sequence-notification, deployment |
+| 34 | Pruebas automatizadas en CI | ✅ | 31 tests backend + 7 frontend |
 | 35 | GitHub Actions para despliegue | 🟡 | CI sí, **CD no** (CD1) |
 | 36 | Métricas calidad (SonarQube) | ❌ | (CD3) |
-| 37 | Despliegue automático máquina limpia | 🟡 | `docker compose up` lo hace; documentar (CD2) |
-| 38 | Informe cobertura automático | ✅ | `pytest-cov` integrado en CI; artefacto `backend-coverage` (TS3) |
-| 39 | Trazabilidad requisitos-código | ✅ | `docs/traceability.md` (D4) |
-| 40 | Registro de prompts IA | ✅ | `docs/ai-prompts.md` (D5) |
+| 37 | Despliegue automático máquina limpia | 🟡 | `docker compose up` lo hace, falta documentar (CD2) |
+| 38 | Informe cobertura automático | ✅ | pytest-cov + artefacto `backend-coverage` |
+| 39 | Trazabilidad requisitos-código | ✅ | `docs/traceability.md` |
+| 40 | Registro de prompts IA | ✅ | `docs/ai-prompts.md` |
 
-**Resumen actual tras Fase 3 (sin CDx): 38 ✅ · 2 🟡 · 0 ❌**
+**Resumen actual: 38 ✅ · 2 🟡 · 1 ❌** (#36 estricto)
 
-(Histórico: 22 ✅ pre-Fase 1 → 30 ✅ tras Fase 1 → 36 ✅ tras Fase 2 → **38 ✅ tras Fase 3**.)
+(Histórico: 22 ✅ pre-Fase 1 → 30 ✅ tras Fase 1 → 36 ✅ tras Fase 2 → **38 ✅ tras Fase 3 + fixes CI**)
 
-Quedan dos checks "parciales" pendientes solo de los CDx asignados a Javier:
-- 🟡 #35 Pipeline CD (CD1)
-- 🟡 #37 Despliegue máquina limpia documentado (CD2)
-- 🟡 #36 Métricas calidad (CD3) — sí cuenta como ❌ estricto pero al haberlo asignado ya queda fuera de mi alcance.
-
-Tras los 3 CDx, llegaríamos a 40/40.
+Tras los 3 CDx asignados a Javier, el proyecto llegará a **40/40 ✅**.
 
 ---
 
-## 🗂️ Tareas — estado y asignación
+## 🗂️ Histórico de tareas hechas
 
-### ✅ Hechas en Fase 0 (Cristina)
+### ✅ Fase 0 (Cristina)
 
 | ID | Tarea | Notas |
 |---|---|---|
-| **T1** | Eliminar rol lector | Enum, default GESTOR, frontend, migración Alembic |
-| **T6.1** | Prefijo `/api/v1` | Ya existía; verificado |
+| **T1** | Eliminar rol lector | Enum + default GESTOR + frontend + migración Alembic |
+| **T6.1** | Prefijo `/api/v1` | Verificado |
 | **T6.2** | Role como entidad | Tabla roles + user_roles + endpoints CRUD + seed admin/gestor |
-| **T7** | Atomicidad crawler | Verificado, sin cambios |
+| **T7** | Atomicidad crawler | Verificado |
 | **T9** | Recommender 3-10 | Garantizado con fallback genérico |
 | **T10** | Límite 20 alertas/gestor | Verificado |
-| **TS1** | Blindaje `conftest.py` | Aborta si BD no contiene "test"; CI ajustado |
+| **TS1** | Blindaje `conftest.py` | Aborta si BD no contiene "test" |
 
-### ✅ Hechas en Fase 1 (Cristina)
+### ✅ Fase 1 (Cristina)
 
 | ID | Tarea | Notas |
 |---|---|---|
-| **T6.3** | Sources split → Category + InformationSource + RSSChannel | Migración con backfill, IDs preservados |
-| **T6.4** | Alerts oficial | descriptors, categories[], rss_channels_ids[], information_sources_ids[]; user_id; matching adaptado |
-| **T6.5** | Notifications oficial | timestamp + metrics; endpoints anidados oficiales + atajos `/users/me` |
+| **T6.3** | Sources split | Category + InformationSource + RSSChannel; migración con backfill, IDs preservados |
+| **T6.4** | Alerts oficial | descriptors, categories[], rss_channels_ids[], information_sources_ids[]; matching adaptado |
+| **T6.5** | Notifications oficial | timestamp + metrics; endpoints anidados + atajos `/users/me` |
 | **T6.6** | Stats endpoint | Módulo nuevo + tabla + CRUD oficial |
-| **T6.7** | Users oficial | organization NOT NULL + sizes 120/180 + password min 6 + CRUD `/users` |
+| **T6.7** | Users oficial | organization NOT NULL + sizes 120/180 + password ≥6 + CRUD `/users` |
 | **B0/B1/B2/B3** | Bugs sources/alertas/news/notif globales | Resueltos por el equipo antes de Fase 0/1 |
 
-### ✅ Hechas en Fase 2 (Cristina)
+### ✅ Fase 2 (Cristina)
 
 | ID | Tarea | Notas |
 |---|---|---|
-| **T4** | Dashboard filtrado per-user | Endpoints `/news/me/stats`, `/news/me/wordcloud`, `/alerts/me/stats`. Frontend `DashboardPage` consume los `me/*` |
-| **T5** | WordCloud solo con noticias matcheadas | Implementado vía subquery `news.id IN (SELECT news_id FROM notifications WHERE user_id=:me)` |
-| **TS2** | Tests backend ampliados | `test_auth.py` (7 tests), `test_sources_split.py` (4), `test_alerts_per_user.py` (5) + helpers compartidos |
-| **TS3** | Cobertura `pytest-cov` en CI | `pytest-cov` añadido + reportes XML/HTML como artefacto en GitHub Actions |
-| **D1** | ADRs movidos a `/docs/adr` | `git mv docs/decisions docs/adr` + actualizadas referencias |
-| **D2** | Diagramas arquitectura | Mermaid en `docs/diagrams/architecture.md`, `sequence-notification.md`, `deployment.md` |
-| **D3** | Docs técnicas core | `architecture.md`, `api-design.md`, `database-design.md`, `extension-guide.md`, `testing-strategy.md` |
-| **D6** | `.env.example` raíz + backend | Plantillas con comentarios, sin secretos |
+| **T4** | Dashboard per-user | `/news/me/stats`, `/news/me/wordcloud`, `/alerts/me/stats` |
+| **T5** | WordCloud filtrado | Subquery `news.id IN (SELECT news_id FROM notifications WHERE user_id=:me)` |
+| **TS2** | Tests backend ampliados | 16 tests (auth + sources_split + alerts_per_user) + helpers compartidos |
+| **TS3** | Cobertura `pytest-cov` en CI | XML + HTML como artefacto |
+| **D1** | ADRs movidos a `/docs/adr` | Reorganización |
+| **D2** | Diagramas arquitectura | 3 diagramas Mermaid (bloques, secuencia, despliegue) |
+| **D3** | Docs técnicas core | architecture, api-design, database-design, extension-guide, testing-strategy |
+| **D6** | `.env.example` raíz + backend | Plantillas con comentarios |
 
-### ✅ Hechas en Fase 3 (Cristina)
+### ✅ Fase 3 (Cristina)
 
 | ID | Tarea | Notas |
 |---|---|---|
-| **TS4** | Smoke tests frontend con vitest | `vitest.config.js` + setup con mock de i18n y fetch + 3 tests (LoginPage, AlertsPage, NewsPage). `npm test` integrado en CI. |
-| **TS5** | Tests crawler | `tests/test_crawler.py` (6 tests): success, empty feed, malformed entries, broken feed, dedup, only-active. Refactor del crawler para no romper con entries inválidos. |
-| **D4** | Trazabilidad requisitos↔código↔tests | `docs/traceability.md` con tabla completa de los 40 checks + adendas/dudas oficiales. |
-| **D5** | Registro de prompts IA | `docs/ai-prompts.md` con todos los prompts por fase, propósito y resultado. |
+| **TS4** | Smoke tests frontend con vitest | 7 tests: LoginPage (3), AlertsPage (2), NewsPage (2) + setup con mocks |
+| **TS5** | Tests crawler | 6 tests: success, empty, malformed, broken, dedup, only-active |
+| **D4** | Trazabilidad requisitos↔código↔tests | `docs/traceability.md` |
+| **D5** | Registro de prompts IA | `docs/ai-prompts.md` por fase |
 
-### 🔴 Pendientes Fase 3 (CDx — Javier)
+### ✅ Fixes CI (Cristina)
 
-| ID | Tarea | Responsable | Detalle | Cubre check |
-|---|---|---|---|---|
-| **CD1** | Pipeline despliegue (GitHub Actions) | **Javier** | Build + push imágenes a `ghcr.io` en push a main | #35 |
-| **CD2** | Documentar despliegue máquina limpia | **Javier** | Sección en `docs/deployment.md` | #37 |
-| **CD3** | SonarCloud o métricas calidad | **Javier** | Action Sonar o `ruff/eslint` como artefactos | #36 |
+| Fix | Notas |
+|---|---|
+| `4d40273` | Vars SMTP en `backend-test` job (test E2E necesita MailHog accesible) |
+| `c55c39c` | Tests vitest: `queryAllByText` en LoginPage; `<input>` en NewsPage |
+| `4e3f630` | Mock `localStorage`/`sessionStorage` en `setup.js` (jsdom no siempre los expone) |
+| `b480125` | Test crawler `active-only` con asserts de pertenencia (resiliente a seeds) |
 
-### Tareas obsoletas
+### 🔴 Pendientes — CDx (Javier)
 
-#### Absorbidas por Fase 1
+| ID | Tarea | Detalle | Cubre check |
+|---|---|---|---|
+| **CD1** | Pipeline despliegue (GitHub Actions) | Build + push imágenes a `ghcr.io` en push a main | #35 |
+| **CD2** | Documentar despliegue máquina limpia | Sección en `docs/deployment.md` paso a paso | #37 |
+| **CD3** | SonarCloud o métricas calidad | Action Sonar o `ruff/eslint` como artefactos con badge | #36 |
+
+### Tareas obsoletas (absorbidas)
 
 | ID original | Por qué ya no aplica |
 |---|---|
@@ -196,18 +200,18 @@ GET    /api/v1/users/{user_id}
 PUT    /api/v1/users/{user_id}
 DELETE /api/v1/users/{user_id}                       (204)
 
-GET/POST/GET/PUT/DELETE  /api/v1/roles[/{id}]
-GET/POST/GET/PUT/DELETE  /api/v1/categories[/{id}]
-GET/POST/GET/PUT/DELETE  /api/v1/information-sources[/{id}]
-GET/POST/GET/PUT/DELETE  /api/v1/information-sources/{id}/rss-channels[/{cid}]
+GET/POST/PUT/DELETE  /api/v1/roles[/{id}]
+GET/POST/PUT/DELETE  /api/v1/categories[/{id}]
+GET/POST/PUT/DELETE  /api/v1/information-sources[/{id}]
+GET/POST/PUT/DELETE  /api/v1/information-sources/{id}/rss-channels[/{cid}]
 
-GET/POST/GET/PUT/DELETE  /api/v1/users/{user_id}/alerts[/{alert_id}]
-GET/POST/GET/PUT/DELETE  /api/v1/users/{user_id}/alerts/{alert_id}/notifications[/{nid}]
+GET/POST/PUT/DELETE  /api/v1/users/{user_id}/alerts[/{alert_id}]
+GET/POST/PUT/DELETE  /api/v1/users/{user_id}/alerts/{alert_id}/notifications[/{nid}]
 
-GET/POST/GET/PUT/DELETE  /api/v1/stats[/{id}]
+GET/POST/PUT/DELETE  /api/v1/stats[/{id}]
 ```
 
-### Endpoints añadidos sobre el contrato (permitido por el profesor)
+### Endpoints añadidos (permitidos por el profesor)
 
 ```
 GET    /api/v1/users/me/alerts                       (atajo)
@@ -221,8 +225,11 @@ PATCH  /api/v1/information-sources/{s}/rss-channels/{c}/activate|deactivate
 GET    /api/v1/alerts/categories                     (lista IPTC)
 GET    /api/v1/alerts/suggestions/{keyword}          (recommender 3-10)
 GET    /api/v1/alerts/me/stats                       (dashboard per-user)
-GET    /api/v1/information-sources/catalog/summary   (checklist #13-15)
 GET    /api/v1/news/...                              (no oficial, permitido)
+GET    /api/v1/news/me/stats                         (per-user)
+GET    /api/v1/news/me/wordcloud                     (per-user)
+GET    /api/v1/information-sources/catalog/summary   (checklist #13-15)
+POST   /api/v1/crawler/run                           (disparo manual)
 GET    /api/v1/auth/verify-email
 POST   /api/v1/auth/resend-verification
 GET    /api/v1/auth/users
@@ -234,6 +241,9 @@ GET    /api/v1/health/db
 
 ## 🗄️ Migraciones Alembic aplicadas (en orden)
 
+Las 6 migraciones de Fase 0/1 + las anteriores del equipo se aplican limpio desde cero. Lista completa en [`docs/database-design.md`](database-design.md).
+
+Hitos:
 1. `f1a2b3c4d5e6` — Roles entity + remove lector (Fase 0)
 2. `f2b3c4d5e6f7` — Split sources → categories + information_sources + rss_channels (T6.3)
 3. `f3c4d5e6f7a8` — Align alerts with official API (T6.4)
@@ -241,44 +251,35 @@ GET    /api/v1/health/db
 5. `f5e6f7a8b9c0` — Create stats table (T6.6)
 6. `f6f7a8b9c0d1` — Align users with official API (T6.7)
 
-Verificado: arrancando Docker desde cero las 6 migraciones aplican limpio, se siembran 110 canales en 20 medios y los 9/9 tests pasan contra `newsradar_test`.
+Verificado: 110 canales en 20 medios sembrados al arrancar, 31/31 tests pasan contra `newsradar_test` con cobertura 75%.
 
 ---
 
-## 📅 Orden de merge sugerido para cerrar el proyecto
+## 📅 Plan para cierre del proyecto
 
-### ✅ Sprint A — Fase 2 (cerrada en `feature/phase2-cristina`)
-- T4, T5, TS2, TS3, D1, D2, D3, D6 — todo merged en una sola rama.
+### ✅ Hecho (mergeado a main)
+Fases 0+1+2+3 + fixes CI.
 
-### Sprint B — Fase 3 (~2-3 días, en paralelo)
-- **100475102** → TS4 (vitest frontend)
-- **100475101** → TS5 (tests crawler)
-- **Javier** → CD1, CD2, CD3 (CD pipeline + deployment doc + Sonar)
-- **Cristina** → D4, D5 (trazabilidad, prompts IA)
+### 🔴 Sprint final — CDx (Javier, 1-2 días)
+- **CD1** Pipeline despliegue: `cd.yml` con build + push a `ghcr.io` en push a `main`
+- **CD2** Documentar despliegue máquina limpia: añadir sección en `docs/deployment.md` con receta paso a paso (clonar → `.env` → up → smoke health)
+- **CD3** SonarCloud action o badges de ruff/eslint en README
 
-### Sprint C — Cierre (1 día)
-- Smoke test conjunto: `docker compose up --build` desde rama main, recorrer `docs/demo.md`.
-- Verificar 40/40 checks del checklist del profesor.
-- Crear release tag.
-
----
-
-## 📐 Reglas de trabajo
-
-- Una rama por persona-tarea: `feature/<nombre>-<id>` (ej. `feature/manso-T4-dashboard-per-user`).
-- PR a `main` con descripción: tarea cerrada, checklist del profesor cubierto, captura/curl de verificación.
-- Review mínima de 1 compañero antes de mergear.
-- Cada commit con tu cuenta de la uni (Phase 0 ya configuró el local).
-- No push directo a `main`.
+### 🎯 Cierre (cuando estén los 3 CDx)
+- Smoke test conjunto: `docker compose up --build` desde `main`, recorrer `docs/demo.md`
+- Verificar **40/40** checks del checklist del profesor
+- Crear release tag `v1.0.0`
 
 ---
 
-## 📌 Estado final esperado (cuando se cierre Sprint C)
+## 📌 Checklist de "perfección" antes de la entrega
 
-- 40/40 checks del `DOSS-CHECKLIST_2026` ✅
-- 26/26 checks de proceso general ✅
-- API matchea exactamente la oficial del aula global ✅
-- CI + CD verde ✅
-- Cobertura > 60% ✅
-- Documentación completa (ADRs, diagramas, traceability, prompts IA) ✅
-- Demo reproducible documentada ✅
+Para llegar literalmente a 40/40 ✅ y maximizar nota:
+
+- [ ] **CD1**, **CD2**, **CD3** mergeados (Javier)
+- [ ] Limpieza repo: borrar `backend;C/` (artefacto Windows) y `package-lock.json` raíz
+- [ ] Actualizar `docs/demo.md` con paso "verifica dashboard per-user"
+- [ ] Añadir 2-3 screenshots en `docs/images/`
+- [ ] Tag `v1.0.0` y release notes en GitHub
+
+Las 4 últimas son cosméticas — sin ellas el proyecto sigue siendo entregable.
