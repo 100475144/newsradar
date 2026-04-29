@@ -97,7 +97,8 @@ def create_alert_notification(
     alert_service: AlertService = Depends(get_alert_service),
     notification_service: NotificationService = Depends(get_notification_service),
 ):
-    alert = _get_owned_alert(user_id, alert_id, current_user, alert_service)
+    # Verificar acceso/ownership de la alerta antes de denegar.
+    _get_owned_alert(user_id, alert_id, current_user, alert_service)
     # Crear notificación canónica desligada de news: como nuestra UI necesita
     # title/message obligatorios, autogeneramos placeholders cuando se crea
     # vía endpoint canónico. ``news_id`` se requiere por unicidad lógica;

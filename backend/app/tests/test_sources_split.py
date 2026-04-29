@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.modules.sources.models import Category, InformationSource, RSSChannel
+from app.modules.sources.models import Category
 from app.tests.helpers import auth_headers_for, create_test_user
 
 

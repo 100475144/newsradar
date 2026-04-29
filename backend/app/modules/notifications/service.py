@@ -1,6 +1,6 @@
 """Servicio de notifications adaptado al schema oficial (T6.5)."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import HTTPException, status
 
