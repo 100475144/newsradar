@@ -99,9 +99,9 @@ erDiagram
         int    user_id FK
         string name "max 200"
         json   descriptors
-        json   categories "[{code,label}]"
-        json   rss_channels_ids "[str]"
-        json   information_sources_ids "[str]"
+        json   categories "array of code-label"
+        json   rss_channels_ids "array of str"
+        json   information_sources_ids "array of str"
         string cron_expression "max 120"
         string keyword "interno"
         bool   is_active "interno"
@@ -115,7 +115,7 @@ erDiagram
         int    user_id FK
         int    news_id FK
         ts     timestamp
-        json   metrics "[{name,value}]"
+        json   metrics "array of name-value"
         string title "interno"
         text   message "interno"
         bool   is_read "interno"
@@ -123,7 +123,7 @@ erDiagram
 
     STATS {
         int  id PK
-        json metrics "[{name,value}]"
+        json metrics "array of name-value"
         ts   created_at "interno"
     }
 ```
