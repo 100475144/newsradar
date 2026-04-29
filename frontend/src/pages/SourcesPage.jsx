@@ -1,112 +1,47 @@
-import React, { useCallback, useEffect, useReducer, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
 import {
-  createSource,
-  deleteSource,
-  getSources,
+  activateRssChannel,
+  createInformationSource,
+  createRssChannel,
+  deactivateRssChannel,
+  deleteInformationSource,
+  deleteRssChannel,
+  getCategories,
+  getInformationSources,
+  getRssChannelsForSource,
   getSourcesCatalogSummary,
-  updateSource,
+  updateInformationSource,
+  updateRssChannel,
 } from '../api/sourcesApi'
-import { request } from '../api/client'
-import { useAuth } from '../context/AuthContext'
 
-const INITIAL_FORM = {
-  medium_name: '',
-  name: '',
-  url: '',
-  category: '',
-}
+const EMPTY_MEDIUM = { name: '', url: '' }
+const EMPTY_CHANNEL = { url: '', category_id: '', information_source_id: '' }
 
-function sourcesReducer(state, action) {
-  switch (action.type) {
-    case 'LOADING':
-      return { ...state, status: 'loading', error: '' }
-    case 'LOADED':
-      return { status: 'success', items: action.items, error: '' }
-    case 'ERROR':
-      return { ...state, status: 'error', error: action.error }
-    case 'ADD':
-      return { ...state, items: [...state.items, action.item] }
-    case 'UPDATE':
-      return {
-        ...state,
-        items: state.items.map((source) => (source.id === action.item.id ? action.item : source)),
-      }
-    case 'REMOVE':
-      return { ...state, items: state.items.filter((source) => source.id !== action.id) }
-    default:
-      return state
-  }
-}
-
-function formatCategoryLabel(category, categories) {
-  const match = categories.find((item) => item.code === category)
-  return match ? match.label : category
-}
-
-function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories }) {
+function MediumForm({ initial, onSave, onCancel, isSubmitting, error }) {
   const { t } = useTranslation()
-  const [formData, setFormData] = useState(initial || INITIAL_FORM)
+  const [data, setData] = useState(initial || EMPTY_MEDIUM)
 
-  const handleChange = (event) => {
-    const { name, value } = event.target
-    setFormData((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    onSave(formData)
+  const change = (e) => setData({ ...data, [e.target.name]: e.target.value })
+  const submit = (e) => {
+    e.preventDefault()
+    onSave(data)
   }
 
   return (
-    <form className="source-form" onSubmit={handleSubmit}>
+    <form className="source-form" onSubmit={submit}>
       <div className="field-grid">
         <label className="field">
           <span>{t('sources.medium')}</span>
-          <input
-            type="text"
-            name="medium_name"
-            value={formData.medium_name}
-            onChange={handleChange}
-            placeholder="BBC"
-            required
-          />
+          <input type="text" name="name" value={data.name} onChange={change} required placeholder="BBC" />
         </label>
         <label className="field">
-          <span>{t('sources.channel')}</span>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Technology"
-            required
-          />
-        </label>
-        <label className="field">
-          <span>{t('sources.rss_url')}</span>
-          <input
-            type="url"
-            name="url"
-            value={formData.url}
-            onChange={handleChange}
-            placeholder="https://feeds.bbci.co.uk/news/technology/rss.xml"
-            required
-          />
-        </label>
-        <label className="field">
-          <span>{t('sources.iptc_category')}</span>
-          <select name="category" value={formData.category} onChange={handleChange} required>
-            <option value="" disabled>{t('sources.select_category')}</option>
-            {categories.map((category) => (
-              <option key={category.code} value={category.code}>{category.label}</option>
-            ))}
-          </select>
+          <span>URL</span>
+          <input type="url" name="url" value={data.url} onChange={change} required placeholder="https://www.bbc.com" />
         </label>
       </div>
-
       {error ? <p className="form-message form-message--error">{error}</p> : null}
-
       <div className="source-form__actions">
         <button type="submit" className="primary-button" disabled={isSubmitting}>
           {isSubmitting ? t('sources.saving') : initial ? t('sources.save_changes') : t('sources.add')}
@@ -119,149 +54,206 @@ function SourceForm({ initial, onSave, onCancel, isSubmitting, error, categories
   )
 }
 
-function SourceRow({ source, onEdit, onDelete, onToggle, busy, categories, canEdit }) {
+function ChannelForm({ initial, onSave, onCancel, isSubmitting, error, mediums, categories }) {
   const { t } = useTranslation()
+  const [data, setData] = useState(initial || EMPTY_CHANNEL)
+
+  const change = (e) => {
+    const { name, value } = e.target
+    setData({ ...data, [name]: name.endsWith('_id') ? Number(value) || '' : value })
+  }
+  const submit = (e) => {
+    e.preventDefault()
+    onSave(data)
+  }
 
   return (
-    <div className="source-row">
-      <div className="source-row__info">
-        <strong className="source-row__name">
-          {source.medium_name} - {source.name}
-        </strong>
-        <span className="source-row__url">{t('sources.medium_col')}: {source.medium_name}</span>
-        <span className="source-row__url">{t('sources.channel_col')}: {source.name}</span>
-        <a
-          className="source-row__url"
-          href={source.url}
-          target="_blank"
-          rel="noreferrer noopener"
-        >
-          {source.url}
-        </a>
-        {source.category ? (
-          <span className="source-row__url">
-            {t('sources.category_col')}: {formatCategoryLabel(source.category, categories)}
-          </span>
-        ) : null}
+    <form className="source-form" onSubmit={submit}>
+      <div className="field-grid">
+        <label className="field">
+          <span>{t('sources.medium')}</span>
+          <select name="information_source_id" value={data.information_source_id} onChange={change} required>
+            <option value="" disabled>—</option>
+            {mediums.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>{t('sources.rss_url')}</span>
+          <input
+            type="url"
+            name="url"
+            value={data.url}
+            onChange={change}
+            required
+            placeholder="https://feeds.bbci.co.uk/news/technology/rss.xml"
+          />
+        </label>
+        <label className="field">
+          <span>{t('sources.iptc_category')}</span>
+          <select name="category_id" value={data.category_id} onChange={change} required>
+            <option value="" disabled>{t('sources.select_category')}</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        </label>
       </div>
-
-      <span className={source.is_active ? 'source-badge source-badge--active' : 'source-badge source-badge--inactive'}>
-        {source.is_active ? t('sources.active') : t('sources.inactive')}
-      </span>
-
-      {canEdit ? (
-        <div className="source-row__actions">
-          <button type="button" className="secondary-button" onClick={() => onToggle(source)} disabled={busy}>
-            {source.is_active ? t('sources.deactivate') : t('sources.activate')}
-          </button>
-          <button type="button" className="secondary-button" onClick={() => onEdit(source)} disabled={busy}>
-            {t('sources.edit')}
-          </button>
-          <button type="button" className="danger-button" onClick={() => onDelete(source.id)} disabled={busy}>
-            {t('sources.delete')}
-          </button>
-        </div>
-      ) : null}
-    </div>
+      {error ? <p className="form-message form-message--error">{error}</p> : null}
+      <div className="source-form__actions">
+        <button type="submit" className="primary-button" disabled={isSubmitting}>
+          {isSubmitting ? t('sources.saving') : initial ? t('sources.save_changes') : t('sources.add')}
+        </button>
+        <button type="button" className="secondary-button" onClick={onCancel}>
+          {t('sources.cancel')}
+        </button>
+      </div>
+    </form>
   )
 }
 
 export default function SourcesPage() {
-  const { user } = useAuth()
   const { t } = useTranslation()
-  const canEdit = user?.role !== 'lector'
-  const [state, dispatch] = useReducer(sourcesReducer, {
-    status: 'loading',
-    items: [],
-    error: '',
-  })
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState(null)
-  const [formError, setFormError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [busyId, setBusyId] = useState(null)
+  const canEdit = true
+
+  const [tab, setTab] = useState('channels')
+
+  const [mediums, setMediums] = useState([])
+  const [channels, setChannels] = useState([])
   const [categories, setCategories] = useState([])
   const [catalogSummary, setCatalogSummary] = useState(null)
 
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+
+  const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [formError, setFormError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [busyId, setBusyId] = useState(null)
+
   const load = useCallback(async () => {
-    dispatch({ type: 'LOADING' })
+    setStatus('loading')
+    setError('')
     try {
-      const [items, catalog, cats] = await Promise.all([
-        getSources(),
+      const [meds, cats, summary] = await Promise.all([
+        getInformationSources(),
+        getCategories(),
         getSourcesCatalogSummary(),
-        request('/alerts/categories'),
       ])
-      dispatch({ type: 'LOADED', items })
-      setCatalogSummary(catalog)
+      setMediums(meds)
       setCategories(cats)
-    } catch (error) {
-      dispatch({ type: 'ERROR', error: error.message })
+      setCatalogSummary(summary)
+
+      const allChannels = []
+      for (const m of meds) {
+        const list = await getRssChannelsForSource(m.id)
+        for (const ch of list) {
+          allChannels.push({ ...ch, medium: m })
+        }
+      }
+      setChannels(allChannels)
+      setStatus('success')
+    } catch (err) {
+      setError(err.message || 'Error loading data')
+      setStatus('error')
     }
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  const handleAdd = async (formData) => {
-    setFormError('')
-    setIsSubmitting(true)
+  const findMedium = (id) => mediums.find((m) => m.id === id)
+  const findCategory = (id) => categories.find((c) => c.id === id)
+
+  // ── Mediums handlers ──────────────────────────────────────────────
+
+  const onSaveMedium = async (formData) => {
+    setSubmitting(true); setFormError('')
     try {
-      const created = await createSource(formData)
-      dispatch({ type: 'ADD', item: created })
-      setShowForm(false)
-    } catch (error) {
-      setFormError(error.message)
+      if (editing) {
+        await updateInformationSource(editing.id, formData)
+      } else {
+        await createInformationSource(formData)
+      }
+      setShowForm(false); setEditing(null)
+      await load()
+    } catch (err) {
+      setFormError(err.message || 'Error saving medium')
     } finally {
-      setIsSubmitting(false)
+      setSubmitting(false)
     }
   }
 
-  const handleUpdate = async (formData) => {
-    setFormError('')
-    setIsSubmitting(true)
-    try {
-      const updated = await updateSource(editing.id, { ...formData, is_active: editing.is_active })
-      dispatch({ type: 'UPDATE', item: updated })
-      setEditing(null)
-    } catch (error) {
-      setFormError(error.message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleDelete = async (id) => {
+  const onDeleteMedium = async (id) => {
     if (!window.confirm(t('sources.delete_confirm'))) return
     setBusyId(id)
     try {
-      await deleteSource(id)
-      dispatch({ type: 'REMOVE', id })
-    } catch (error) {
-      dispatch({ type: 'ERROR', error: error.message })
+      await deleteInformationSource(id)
+      await load()
+    } catch (err) {
+      setError(err.message)
     } finally {
       setBusyId(null)
     }
   }
 
-  const handleToggle = async (source) => {
-    setBusyId(source.id)
+  // ── Channels handlers ─────────────────────────────────────────────
+
+  const onSaveChannel = async (formData) => {
+    setSubmitting(true); setFormError('')
     try {
-      const updated = await updateSource(source.id, {
-        medium_name: source.medium_name,
-        name: source.name,
-        url: source.url,
-        category: source.category,
-        is_active: !source.is_active,
-      })
-      dispatch({ type: 'UPDATE', item: updated })
-    } catch (error) {
-      dispatch({ type: 'ERROR', error: error.message })
+      const sourceId = Number(formData.information_source_id)
+      const payload = {
+        url: formData.url,
+        category_id: Number(formData.category_id),
+      }
+      if (editing) {
+        await updateRssChannel(editing.medium.id, editing.id, payload)
+      } else {
+        await createRssChannel(sourceId, payload)
+      }
+      setShowForm(false); setEditing(null)
+      await load()
+    } catch (err) {
+      setFormError(err.message || 'Error saving channel')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const onDeleteChannel = async (channel) => {
+    if (!window.confirm(t('sources.delete_confirm'))) return
+    setBusyId(channel.id)
+    try {
+      await deleteRssChannel(channel.medium.id, channel.id)
+      await load()
+    } catch (err) {
+      setError(err.message)
     } finally {
       setBusyId(null)
     }
   }
 
-  const openAdd = () => { setEditing(null); setFormError(''); setShowForm(true) }
-  const openEdit = (source) => { setEditing(source); setFormError(''); setShowForm(false) }
+  const onToggleChannel = async (channel) => {
+    setBusyId(channel.id)
+    try {
+      if (channel.is_active) {
+        await deactivateRssChannel(channel.medium.id, channel.id)
+      } else {
+        await activateRssChannel(channel.medium.id, channel.id)
+      }
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const openAdd = () => { setEditing(null); setShowForm(true); setFormError('') }
+  const openEditMedium = (m) => { setEditing(m); setShowForm(true); setFormError('') }
+  const openEditChannel = (ch) => { setEditing(ch); setShowForm(true); setFormError('') }
   const cancelForm = () => { setShowForm(false); setEditing(null); setFormError('') }
 
   return (
@@ -276,98 +268,134 @@ export default function SourcesPage() {
         <div className="panel-card">
           <h2>{t('sources.default_catalog')}</h2>
           <dl className="detail-list">
-            <div>
-              <dt>{t('sources.initial_channels')}</dt>
-              <dd>{catalogSummary.total_channels}</dd>
-            </div>
-            <div>
-              <dt>{t('sources.media_outlets')}</dt>
-              <dd>{catalogSummary.total_media_outlets}</dd>
-            </div>
-            <div>
-              <dt>{t('sources.iptc_coverage')}</dt>
+            <div><dt>{t('sources.initial_channels')}</dt><dd>{catalogSummary.total_channels}</dd></div>
+            <div><dt>{t('sources.media_outlets')}</dt><dd>{catalogSummary.total_media_outlets}</dd></div>
+            <div><dt>{t('sources.iptc_coverage')}</dt>
               <dd>{catalogSummary.iptc_categories_covered} / {catalogSummary.iptc_categories_total}</dd>
             </div>
-            <div>
-              <dt>{t('sources.status')}</dt>
-              <dd>
-                {catalogSummary.covers_all_iptc_categories
-                  ? t('sources.all_covered')
-                  : t('sources.coverage_incomplete')}
-              </dd>
+            <div><dt>{t('sources.status')}</dt>
+              <dd>{catalogSummary.covers_all_iptc_categories
+                ? t('sources.all_covered')
+                : t('sources.coverage_incomplete')}</dd>
             </div>
           </dl>
         </div>
       ) : null}
 
-      <div className="sources-toolbar">
-        {canEdit && !showForm && !editing ? (
-          <button type="button" className="primary-button" onClick={openAdd}>
-            {t('sources.add_source')}
+      <div className="sources-toolbar" style={{ display: 'flex', gap: '0.5rem' }}>
+        <button
+          type="button"
+          className={tab === 'channels' ? 'primary-button' : 'secondary-button'}
+          onClick={() => { setTab('channels'); cancelForm() }}
+        >
+          RSS Channels
+        </button>
+        <button
+          type="button"
+          className={tab === 'mediums' ? 'primary-button' : 'secondary-button'}
+          onClick={() => { setTab('mediums'); cancelForm() }}
+        >
+          Information Sources
+        </button>
+        {canEdit && !showForm ? (
+          <button type="button" className="primary-button" onClick={openAdd} style={{ marginLeft: 'auto' }}>
+            {tab === 'channels' ? t('sources.add_source') : 'Add medium'}
           </button>
         ) : null}
       </div>
 
       {showForm ? (
         <div className="panel-card">
-          <h2>{t('sources.new_source')}</h2>
-          <SourceForm
-            onSave={handleAdd}
-            onCancel={cancelForm}
-            isSubmitting={isSubmitting}
-            error={formError}
-            categories={categories}
-          />
-        </div>
-      ) : null}
-
-      {state.status === 'loading' ? (
-        <p className="sources-feedback">{t('sources.loading')}</p>
-      ) : null}
-
-      {state.status === 'error' ? (
-        <p className="form-message form-message--error">{state.error}</p>
-      ) : null}
-
-      {state.status === 'success' && state.items.length === 0 ? (
-        <div className="panel-card sources-empty">
-          <p>{t('sources.empty')}</p>
-        </div>
-      ) : null}
-
-      {state.status === 'success' && state.items.length > 0 ? (
-        <div className="sources-list">
-          {state.items.map((source) =>
-            editing?.id === source.id ? (
-              <div key={source.id} className="panel-card">
-                <h2>{t('sources.edit_source')}</h2>
-                <SourceForm
-                  initial={{
-                    medium_name: source.medium_name,
-                    name: source.name,
-                    url: source.url,
-                    category: source.category || '',
-                  }}
-                  onSave={handleUpdate}
-                  onCancel={cancelForm}
-                  isSubmitting={isSubmitting}
-                  error={formError}
-                  categories={categories}
-                />
-              </div>
-            ) : (
-              <SourceRow
-                key={source.id}
-                source={source}
-                onEdit={openEdit}
-                onDelete={handleDelete}
-                onToggle={handleToggle}
-                busy={busyId === source.id}
-                categories={categories}
-                canEdit={canEdit}
-              />
-            ),
+          <h2>{editing ? t('sources.edit_source') : t('sources.new_source')}</h2>
+          {tab === 'channels' ? (
+            <ChannelForm
+              initial={editing ? {
+                url: editing.url,
+                category_id: editing.category_id,
+                information_source_id: editing.information_source_id,
+              } : null}
+              onSave={onSaveChannel}
+              onCancel={cancelForm}
+              isSubmitting={submitting}
+              error={formError}
+              mediums={mediums}
+              categories={categories}
+            />
+          ) : (
+            <MediumForm
+              initial={editing ? { name: editing.name, url: editing.url } : null}
+              onSave={onSaveMedium}
+              onCancel={cancelForm}
+              isSubmitting={submitting}
+              error={formError}
+            />
           )}
+        </div>
+      ) : null}
+
+      {status === 'loading' ? <p className="sources-feedback">{t('sources.loading')}</p> : null}
+      {status === 'error' ? <p className="form-message form-message--error">{error}</p> : null}
+
+      {status === 'success' && tab === 'channels' && channels.length === 0 ? (
+        <div className="panel-card sources-empty"><p>{t('sources.empty')}</p></div>
+      ) : null}
+
+      {status === 'success' && tab === 'channels' && channels.length > 0 ? (
+        <div className="sources-list">
+          {channels.map((ch) => (
+            <div key={ch.id} className="source-row">
+              <div className="source-row__info">
+                <strong className="source-row__name">{ch.medium?.name} — id #{ch.id}</strong>
+                <a className="source-row__url" href={ch.url} target="_blank" rel="noreferrer noopener">
+                  {ch.url}
+                </a>
+                <span className="source-row__url">
+                  {t('sources.category_col')}: {findCategory(ch.category_id)?.name || ch.category_id}
+                </span>
+              </div>
+              <span className={ch.is_active ? 'source-badge source-badge--active' : 'source-badge source-badge--inactive'}>
+                {ch.is_active ? t('sources.active') : t('sources.inactive')}
+              </span>
+              {canEdit ? (
+                <div className="source-row__actions">
+                  <button type="button" className="secondary-button" onClick={() => onToggleChannel(ch)} disabled={busyId === ch.id}>
+                    {ch.is_active ? t('sources.deactivate') : t('sources.activate')}
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => openEditChannel(ch)} disabled={busyId === ch.id}>
+                    {t('sources.edit')}
+                  </button>
+                  <button type="button" className="danger-button" onClick={() => onDeleteChannel(ch)} disabled={busyId === ch.id}>
+                    {t('sources.delete')}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {status === 'success' && tab === 'mediums' && mediums.length > 0 ? (
+        <div className="sources-list">
+          {mediums.map((m) => (
+            <div key={m.id} className="source-row">
+              <div className="source-row__info">
+                <strong className="source-row__name">{m.name}</strong>
+                <a className="source-row__url" href={m.url} target="_blank" rel="noreferrer noopener">
+                  {m.url}
+                </a>
+              </div>
+              {canEdit ? (
+                <div className="source-row__actions">
+                  <button type="button" className="secondary-button" onClick={() => openEditMedium(m)} disabled={busyId === m.id}>
+                    {t('sources.edit')}
+                  </button>
+                  <button type="button" className="danger-button" onClick={() => onDeleteMedium(m.id)} disabled={busyId === m.id}>
+                    {t('sources.delete')}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ))}
         </div>
       ) : null}
     </section>

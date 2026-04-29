@@ -1,9 +1,177 @@
-"""Servicio del módulo alerts: lógica de negocio relacionada con alertas y reglas de coincidencia."""
+"""Servicio del módulo alerts.
+
+Adaptado al schema oficial (T6.4).
+"""
+
+import logging
 
 from fastapi import HTTPException, status
 
+from app.core.iptc import IPTC_CATEGORIES
 from app.modules.alerts.models import Alert
 from app.modules.alerts.repository import AlertRepository
+
+logger = logging.getLogger(__name__)
+
+
+def _backfill_matching_for_alert(db_session, alert: Alert, *, lookback: int = 500) -> int:
+    """Ejecuta el motor de matching contra las últimas ``lookback`` noticias
+    para que una alerta recién creada/actualizada genere notificaciones también
+    para news pre-existentes (no solo para las que el crawler capture en el
+    futuro).
+
+    Devuelve el número de notificaciones creadas.
+    """
+    from app.modules.alerts.matching import (
+        _news_matches_alert,
+        _resolve_news_classification,
+    )
+    from app.modules.notifications.email_utils import send_email_notification
+    from app.modules.notifications.repository import NotificationRepository
+    from app.modules.notifications.service import build_default_metrics
+    from app.modules.news.models import News
+    from app.modules.sources.models import Category, RSSChannel
+    from datetime import datetime, timezone
+
+    if not alert.is_active:
+        return 0
+
+    news_rows = (
+        db_session.query(News)
+        .order_by(News.published_at.desc().nullslast(), News.id.desc())
+        .limit(lookback)
+        .all()
+    )
+    if not news_rows:
+        return 0
+
+    notification_repo = NotificationRepository(db_session)
+    owner = alert.owner
+    if owner is None or not owner.is_active or not owner.is_verified:
+        return 0
+
+    created = 0
+    for news in news_rows:
+        channel = None
+        channel_category = None
+        if news.source_id is not None:
+            channel = (
+                db_session.query(RSSChannel)
+                .filter(RSSChannel.id == news.source_id)
+                .first()
+            )
+            if channel is not None:
+                channel_category = (
+                    db_session.query(Category)
+                    .filter(Category.id == channel.category_id)
+                    .first()
+                )
+
+        if not _news_matches_alert(news, alert, channel, channel_category):
+            continue
+
+        # Reusar la lógica de classification de matching.py.
+        selected_category, classification_origin = _resolve_news_classification(
+            current_category=getattr(news, "category", None),
+            current_origin=getattr(news, "classification_origin", None),
+            matching_alerts=[alert],
+        )
+        if (
+            getattr(news, "category", None) != selected_category
+            or getattr(news, "classification_origin", None) != classification_origin
+        ):
+            news.category = selected_category
+            if hasattr(news, "classification_origin"):
+                news.classification_origin = classification_origin
+            db_session.add(news)
+            db_session.commit()
+            db_session.refresh(news)
+
+        medium_name = (
+            channel.information_source.name
+            if channel and channel.information_source
+            else None
+        )
+        now = datetime.now().strftime("%d/%m/%Y %H:%M")
+        title = f"Actualización de {alert.name} en {now}"
+        published = (
+            news.published_at.strftime("%d/%m/%Y %H:%M")
+            if getattr(news, "published_at", None)
+            else now
+        )
+        summary = getattr(news, "summary", None) or "Sin resumen disponible."
+        message = (
+            f"Fuente: {medium_name or 'Desconocida'}\n"
+            f"Fecha: {published}\n"
+            f"Título: {news.title}\n\n"
+            f"{summary}"
+        )
+
+        if notification_repo.get_by_delivery_key(
+            user_id=owner.id, alert_id=alert.id, news_id=news.id,
+        ):
+            continue
+
+        notif_metrics = build_default_metrics(news, medium_name)
+        notif_timestamp = (
+            getattr(news, "published_at", None) or datetime.now(timezone.utc)
+        )
+
+        if alert.notify_in_app:
+            notification = notification_repo.create(
+                title=title,
+                message=message,
+                user_id=owner.id,
+                alert_id=alert.id,
+                news_id=news.id,
+                timestamp=notif_timestamp,
+                metrics=notif_metrics,
+            )
+            if notification is not None:
+                created += 1
+
+        if alert.notify_email and owner.email:
+            send_email_notification(
+                to_email=owner.email,
+                subject=title,
+                body=f"{message}\n\nEnlace: {news.link}",
+            )
+
+    if created:
+        logger.info("Backfill matching for alert %s created %d notifications", alert.id, created)
+    return created
+
+
+def _normalize_categories(categories: list) -> list[dict]:
+    """Normalize categories list of objects/dicts into [{code, label}]."""
+    cleaned: list[dict] = []
+    seen: set[str] = set()
+    for entry in categories or []:
+        if hasattr(entry, "model_dump"):
+            data = entry.model_dump()
+        elif isinstance(entry, dict):
+            data = entry
+        else:
+            continue
+        code = (data.get("code") or "").strip().lower()
+        if not code or code in seen:
+            continue
+        seen.add(code)
+        label = (data.get("label") or IPTC_CATEGORIES.get(code) or code).strip()
+        cleaned.append({"code": code, "label": label})
+    return cleaned
+
+
+def _normalize_id_list(values: list) -> list[str]:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for value in values or []:
+        text = str(value).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned
 
 
 class AlertService:
@@ -12,14 +180,14 @@ class AlertService:
     def __init__(self, repository: AlertRepository):
         self.repository = repository
 
-    def list_alerts(self, user_id: int):
+    def list_alerts_for_user(self, user_id: int):
         return self.repository.list_for_user(user_id)
 
     def list_active_alerts(self) -> list[Alert]:
         return self.repository.list_active()
 
     def get_alert(self, alert_id: int, user_id: int) -> Alert:
-        alert = self.repository.get_by_id_created_by(alert_id, user_id)
+        alert = self.repository.get_by_id_for_user(alert_id, user_id)
         if not alert:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -34,52 +202,64 @@ class AlertService:
                 detail="A manager can only create up to 20 alerts.",
             )
 
-        return self.repository.create(
+        alert = self.repository.create(
             name=data.name.strip(),
-            keyword=data.keyword.strip(),
-            expanded_keywords=[
-                item.strip()
-                for item in (data.expanded_keywords or [])
-                if item and item.strip()
-            ],
-            category=data.category,
-            source_ids=data.source_ids or [],
+            descriptors=list(data.descriptors or []),
+            categories=_normalize_categories(data.categories or []),
+            rss_channels_ids=_normalize_id_list(data.rss_channels_ids or []),
+            information_sources_ids=_normalize_id_list(data.information_sources_ids or []),
             cron_expression=data.cron_expression,
-            notify_in_app=bool(data.notify_in_app),
-            notify_email=bool(data.notify_email),
-            created_by=user_id,
+            user_id=user_id,
+            keyword=getattr(data, "keyword", None),
+            notify_in_app=bool(getattr(data, "notify_in_app", True)),
+            notify_email=bool(getattr(data, "notify_email", False)),
+            is_active=True,
         )
+        # Generar notificaciones para news pre-existentes que matcheen.
+        try:
+            _backfill_matching_for_alert(self.repository.db, alert)
+        except Exception:
+            logger.exception("Backfill matching failed for alert %s", alert.id)
+        return alert
 
     def update_alert(self, alert_id: int, data, user_id: int) -> Alert:
         alert = self.get_alert(alert_id, user_id)
 
-        fields = {}
-        if hasattr(data, "name") and data.name is not None:
+        fields: dict = {}
+        if getattr(data, "name", None) is not None:
             fields["name"] = data.name.strip()
-        if hasattr(data, "keyword") and data.keyword is not None:
-            fields["keyword"] = data.keyword.strip()
-        if hasattr(data, "expanded_keywords") and data.expanded_keywords is not None:
-            fields["expanded_keywords"] = [
-                item.strip()
-                for item in data.expanded_keywords
-                if item and item.strip()
-            ]
-        if hasattr(data, "category") and data.category is not None:
-            fields["category"] = data.category
-        if hasattr(data, "source_ids") and data.source_ids is not None:
-            fields["source_ids"] = data.source_ids
-        if hasattr(data, "notify_in_app") and data.notify_in_app is not None:
+        if getattr(data, "descriptors", None) is not None:
+            fields["descriptors"] = list(data.descriptors)
+        if getattr(data, "categories", None) is not None:
+            fields["categories"] = _normalize_categories(data.categories)
+        if getattr(data, "rss_channels_ids", None) is not None:
+            fields["rss_channels_ids"] = _normalize_id_list(data.rss_channels_ids)
+        if getattr(data, "information_sources_ids", None) is not None:
+            fields["information_sources_ids"] = _normalize_id_list(
+                data.information_sources_ids
+            )
+        if getattr(data, "cron_expression", None) is not None:
+            fields["cron_expression"] = data.cron_expression
+        if getattr(data, "keyword", None) is not None:
+            fields["keyword"] = data.keyword
+        if getattr(data, "notify_in_app", None) is not None:
             fields["notify_in_app"] = bool(data.notify_in_app)
-        if hasattr(data, "notify_email") and data.notify_email is not None:
+        if getattr(data, "notify_email", None) is not None:
             fields["notify_email"] = bool(data.notify_email)
-        if hasattr(data, "is_active") and data.is_active is not None:
+        if getattr(data, "is_active", None) is not None:
             fields["is_active"] = bool(data.is_active)
 
         return self.repository.update(alert, **fields)
 
     def activate_alert(self, alert_id: int, user_id: int) -> Alert:
         alert = self.get_alert(alert_id, user_id)
-        return self.repository.update(alert, is_active=True)
+        updated = self.repository.update(alert, is_active=True)
+        # Activar también dispara backfill (matching contra news existentes).
+        try:
+            _backfill_matching_for_alert(self.repository.db, updated)
+        except Exception:
+            logger.exception("Backfill matching failed for alert %s", updated.id)
+        return updated
 
     def deactivate_alert(self, alert_id: int, user_id: int) -> Alert:
         alert = self.get_alert(alert_id, user_id)

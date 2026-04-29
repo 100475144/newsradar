@@ -1,21 +1,35 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserRole(str, Enum):
+    """Roles del sistema.
+
+    El rol "lector" se eliminó por adenda oficial al enunciado: todos los nuevos
+    usuarios son "gestor" automáticamente. El rol "admin" se mantiene para
+    permitir asignaciones via los endpoints de administración (CAMBIO #1).
+    """
+
     ADMIN = "admin"
     GESTOR = "gestor"
-    LECTOR = "lector"
 
 
 class UserBase(BaseModel):
+    """Modelo oficial alineado con ``main.py`` del aula global.
+
+    - ``first_name`` / ``last_name`` max 120.
+    - ``organization`` OBLIGATORIO max 180 (T6.7).
+    - ``role_ids`` se incluye en respuestas pero no se acepta en el body de
+      registro (CAMBIO #1bis: el rol gestor se asigna automáticamente).
+    """
+
     email: EmailStr
-    first_name: str = Field(..., min_length=1, max_length=100)
-    last_name: str = Field(..., min_length=1, max_length=100)
-    organization: Optional[str] = Field(default=None, max_length=150)
+    first_name: str = Field(..., min_length=1, max_length=120)
+    last_name: str = Field(..., min_length=1, max_length=120)
+    organization: str = Field(..., min_length=1, max_length=180)
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -27,22 +41,23 @@ class UserBase(BaseModel):
 
     @field_validator("organization")
     @classmethod
-    def validate_organization(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return value
+    def validate_organization(cls, value: str) -> str:
         value = value.strip()
-        return value or None
+        if not value:
+            raise ValueError("Organization is required.")
+        return value
 
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8, max_length=128)
+    # Min 6 caracteres como exige la API oficial.
+    password: str = Field(..., min_length=6, max_length=128)
 
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
         value = value.strip()
-        if len(value) < 8:
-            raise ValueError("Password must be at least 8 characters long.")
+        if len(value) < 6:
+            raise ValueError("Password must be at least 6 characters long.")
         return value
 
 
@@ -60,9 +75,17 @@ class UserLogin(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    first_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    last_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    organization: Optional[str] = Field(default=None, max_length=150)
+    """Schema oficial de PUT /users/{id}.
+
+    Todos los campos son opcionales; el cliente solo envía lo que cambia.
+    """
+
+    email: Optional[EmailStr] = None
+    first_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    last_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    organization: Optional[str] = Field(default=None, min_length=1, max_length=180)
+    role_ids: Optional[List[int]] = None
+    password: Optional[str] = Field(default=None, min_length=6, max_length=128)
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -80,16 +103,40 @@ class UserUpdate(BaseModel):
         if value is None:
             return value
         value = value.strip()
-        return value or None
+        if not value:
+            raise ValueError("Organization cannot be empty.")
+        return value
 
 
 class UserResponse(UserBase):
     id: int
-    role: UserRole = UserRole.LECTOR
+    role: UserRole = UserRole.GESTOR
+    role_ids: List[int] = Field(default_factory=list)
     is_active: bool = True
     is_verified: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Roles (entidad propia, alineada con la API oficial) ──────────────
+
+
+class RoleBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class RoleCreate(RoleBase):
+    pass
+
+
+class RoleUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+
+
+class RoleResponse(RoleBase):
+    id: int
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -23,3 +23,15 @@ export function getNewsWordcloud({ category, limit = 50 } = {}) {
   params.set('limit', limit)
   return request(`/news/wordcloud?${params.toString()}`)
 }
+
+// CAMBIO #2: dashboard/wordcloud per-user usando alertas del logueado.
+export function getMyNewsStats() {
+  return request('/news/me/stats')
+}
+
+export function getMyNewsWordcloud({ category, limit = 50 } = {}) {
+  const params = new URLSearchParams()
+  if (category) params.set('category', category)
+  params.set('limit', limit)
+  return request(`/news/me/wordcloud?${params.toString()}`)
+}

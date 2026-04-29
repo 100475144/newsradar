@@ -63,31 +63,60 @@ RELATED_TERMS: dict[str, list[str]] = {
 }
 
 
+_GENERIC_SUFFIXES = (
+    "news",
+    "latest",
+    "updates",
+    "report",
+    "analysis",
+    "trends",
+    "headlines",
+    "story",
+    "coverage",
+    "media",
+)
+
+
 def suggest_expanded_keywords(keyword: str) -> list[str]:
-    """Return 3-10 related terms for the given keyword."""
-    keyword = keyword.strip().lower()
+    """Return 3-10 related terms for the given keyword.
 
-    # Exact match first
-    suggestions = RELATED_TERMS.get(keyword, [])
+    Garantiza el mínimo de 3 y el máximo de 10 (checklist #2 del profesor).
+    Si el dominio del recomendador no aporta 3 términos válidos, completamos con
+    sufijos genéricos basados en la propia keyword.
+    """
+    keyword = (keyword or "").strip().lower()
+    if not keyword:
+        raise ValueError("Keyword cannot be empty when requesting suggestions.")
 
-    # Partial match if no exact match
+    suggestions: list[str] = []
+
+    # Exact match
+    if keyword in RELATED_TERMS:
+        suggestions.extend(RELATED_TERMS[keyword])
+
+    # Partial match (substring en cualquiera de las direcciones)
     if not suggestions:
         for key, terms in RELATED_TERMS.items():
             if keyword in key or key in keyword:
-                suggestions = terms
+                suggestions.extend(terms)
                 break
 
-    # Fallback: generate generic related terms
-    if not suggestions:
-        base = keyword.replace("-", " ").replace("_", " ")
-        suggestions = [
-            f"{base} news",
-            f"{base} latest",
-            f"{base} updates",
-            f"{base} report",
-            f"{base} analysis",
-        ]
+    # Limpieza y deduplicación preservando orden
+    cleaned = list(
+        OrderedDict.fromkeys(
+            item.strip().lower()
+            for item in suggestions
+            if item and item.strip() and item.strip().lower() != keyword
+        )
+    )
 
-    unique = list(OrderedDict.fromkeys(item.strip() for item in suggestions if item.strip()))
-    # Ensure between 3 and 10
-    return unique[:10]
+    # Garantizar mínimo de 3 con fallback genérico
+    base = keyword.replace("-", " ").replace("_", " ")
+    for suffix in _GENERIC_SUFFIXES:
+        if len(cleaned) >= 3:
+            break
+        candidate = f"{base} {suffix}"
+        if candidate not in cleaned:
+            cleaned.append(candidate)
+
+    return cleaned[:10]

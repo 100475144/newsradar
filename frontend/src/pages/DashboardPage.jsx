@@ -4,7 +4,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { getHealth } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { getAlerts, getAlertsStats } from '../api/alertsApi'
-import { getNews, getNewsStats, getNewsWordcloud } from '../api/newsApi'
+import {
+  getMyNewsStats,
+  getMyNewsWordcloud,
+  getNews,
+} from '../api/newsApi'
 import { getNotifications } from '../api/notificationsApi'
 
 const CHART_COLORS = [
@@ -94,9 +98,9 @@ export default function DashboardPage() {
           getAlerts(),
           getNews({ limit: 5 }),
           getNotifications(),
-          getNewsStats(),
+          getMyNewsStats(),
           getAlertsStats(),
-          getNewsWordcloud(),
+          getMyNewsWordcloud(),
         ])
         if (!ignore) {
           setActiveAlertsCount(alerts.filter((a) => a.is_active).length)
@@ -119,7 +123,7 @@ export default function DashboardPage() {
     let ignore = false
     async function reload() {
       try {
-        const data = await getNewsWordcloud({ category: wordcloudCategory || undefined })
+        const data = await getMyNewsWordcloud({ category: wordcloudCategory || undefined })
         if (!ignore) setWordcloudData(data)
       } catch { /* ignore */ }
     }

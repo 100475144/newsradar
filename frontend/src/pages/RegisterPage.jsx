@@ -92,6 +92,9 @@ export default function RegisterPage() {
             onChange={handleChange}
             placeholder={t('register.organization_placeholder')}
             autoComplete="organization"
+            required
+            minLength={1}
+            maxLength={180}
           />
         </label>
 

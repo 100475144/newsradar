@@ -25,10 +25,20 @@ def test_rss_category_is_used_when_source_has_no_category():
 
 
 def test_alert_classification_overrides_existing_news_category():
+    # Tras T6.4, ``Alert.categories`` es una lista de objetos {code, label}.
     matching_alerts = [
-        SimpleNamespace(id=8, category="science_technology"),
-        SimpleNamespace(id=3, category="science_technology"),
-        SimpleNamespace(id=9, category="economy_business_finance"),
+        SimpleNamespace(
+            id=8,
+            categories=[{"code": "science_technology", "label": "Science"}],
+        ),
+        SimpleNamespace(
+            id=3,
+            categories=[{"code": "science_technology", "label": "Science"}],
+        ),
+        SimpleNamespace(
+            id=9,
+            categories=[{"code": "economy_business_finance", "label": "Economy"}],
+        ),
     ]
 
     category, origin = _resolve_news_classification(

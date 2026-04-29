@@ -1,73 +1,49 @@
 # Documentation
 
-This directory contains all technical documentation related to the NEWSRADAR system.
+This directory contains all technical documentation related to the NEWSRADAR
+system. It is organised so a new developer (or the professor) can locate any
+artifact in under 30 seconds.
 
-The goal is to clearly document architectural decisions and system design.
-
----
-
-# Contents
+## Layout
 
 ```
-
 docs/
-├── architecture.md
-├── api-design.md
-├── database-design.md
-├── deployment.md
-├── demo.md
-├── sprints.md
-└── decisions/
-
+├── README.md                  ← este fichero
+├── REPARTO_FINAL.md           ← estado vivo del proyecto y reparto de tareas
+├── architecture.md            ← capas, módulos y decisiones globales (D3)
+├── api-design.md              ← contrato REST y traza con la API oficial (D3)
+├── database-design.md         ← ER, tablas, FKs, migraciones (D3)
+├── extension-guide.md         ← cómo añadir módulos / canales / endpoints (D3)
+├── testing-strategy.md        ← niveles de test, comandos, fixtures (D3)
+├── demo.md                    ← script de demostración reproducible
+├── deployment.md              ← despliegue (Docker Compose)
+├── sprints.md                 ← histórico por sprint
+├── adr/                       ← Architecture Decision Records (D1)
+│   ├── crawler_design.md
+│   └── development_env.md
+└── diagrams/                  ← diagramas Mermaid (D2)
+    ├── architecture.md        ← diagrama de bloques
+    ├── sequence-notification.md
+    └── deployment.md
 ```
 
----
+## Lectura recomendada
 
-# Architecture Documentation
+1. `architecture.md` — visión global.
+2. `diagrams/architecture.md` — bloques renderizados.
+3. `api-design.md` — qué endpoints existen y por qué.
+4. `database-design.md` — qué tablas hay y cómo se relacionan.
+5. `testing-strategy.md` — cómo correr y ampliar la batería de tests.
+6. `extension-guide.md` — cómo añadir tu propia funcionalidad.
 
-Documents describing:
+## Documentos vivos
 
-- system architecture
-- module interactions
-- component responsibilities
+- `REPARTO_FINAL.md` se actualiza al cierre de cada fase con el estado de
+  cada tarea y el cumplimiento del checklist del profesor.
+- `demo.md` se valida en cada release (cuando se pasa a `main`).
 
----
+## Architecture Decision Records (ADR)
 
-# API Documentation
-
-Contains:
-
-- endpoint descriptions
-- request and response formats
-- authentication requirements
-
----
-
-# Database Documentation
-
-Describes:
-
-- entity relationships
-- schema design
-- data model decisions
-
----
-
-# Deployment Documentation
-
-Includes instructions for:
-
-- running the system locally
-- container deployment
-- configuration management
-
----
-
-# Architecture Decision Records (ADR)
-
-The `decisions/` directory contains architecture decisions such as:
-
-- why FastAPI was chosen
-- why React + Vite was selected
-- database choice
-- crawler design
+`docs/adr/` recoge decisiones arquitectónicas con su contexto y consecuencias.
+Sigue la convención de
+[Michael Nygard](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions/).

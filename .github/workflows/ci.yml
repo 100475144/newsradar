@@ -15,11 +15,11 @@ jobs:
         env:
           POSTGRES_USER: user
           POSTGRES_PASSWORD: password
-          POSTGRES_DB: news_db
+          POSTGRES_DB: newsradar_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U user -d news_db"
+          --health-cmd "pg_isready -U user -d newsradar_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -29,8 +29,15 @@ jobs:
           - 1025:1025
           - 8025:8025
     env:
-      DATABASE_URL: postgresql+psycopg://user:password@localhost:5432/news_db
+      DATABASE_URL: postgresql+psycopg://user:password@localhost:5432/newsradar_test
       MAILHOG_API_URL: http://localhost:8025/api/v2/messages
+      # MailHog SMTP (servicio levantado arriba en :1025).
+      # Sin estas variables, send_email_notification() corta y el test
+      # ``test_alert_email_notification`` falla esperando un email que nunca llega.
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      SMTP_SENDER: no-reply@newsradar.local
+      SMTP_USE_TLS: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,9 +52,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Run backend tests
+      - name: Run backend tests with coverage
         working-directory: backend
-        run: pytest app/tests -q
+        run: |
+          pytest app/tests -q \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:coverage_html
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: |
+            backend/coverage.xml
+            backend/coverage_html
+          retention-days: 14
 
   backend-lint:
     runs-on: ubuntu-latest

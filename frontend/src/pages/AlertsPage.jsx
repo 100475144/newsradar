@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useReducer, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
 import {
   activateAlert,
   createAlert,
@@ -9,177 +10,127 @@ import {
   getAlertSuggestions,
   updateAlert,
 } from '../api/alertsApi'
-import { getSources } from '../api/sourcesApi'
+import {
+  getCategories,
+  getInformationSources,
+  getRssChannelsForSource,
+} from '../api/sourcesApi'
 import { request } from '../api/client'
-import { useAuth } from '../context/AuthContext'
 
-const INITIAL_FORM = {
+const EMPTY_FORM = {
   name: '',
   keyword: '',
-  category: '',
-  expanded_keywords: '',
-  source_ids: [],
+  descriptors: '',
+  categories: [], // codes
+  rss_channels_ids: [], // strings
+  information_sources_ids: [], // strings
+  cron_expression: '*/5 * * * *',
   notify_in_app: true,
   notify_email: false,
 }
 
-function alertsReducer(state, action) {
-  switch (action.type) {
-    case 'LOADING':
-      return { ...state, status: 'loading', error: '' }
-    case 'LOADED':
-      return { status: 'success', items: action.items, error: '' }
-    case 'ERROR':
-      return { ...state, status: 'error', error: action.error }
-    case 'ADD':
-      return { ...state, items: [...state.items, action.item] }
-    case 'UPDATE':
-      return {
-        ...state,
-        items: state.items.map((a) => (a.id === action.item.id ? action.item : a)),
-      }
-    case 'REMOVE':
-      return { ...state, items: state.items.filter((a) => a.id !== action.id) }
-    default:
-      return state
-  }
-}
-
-function parseExpandedKeywords(raw) {
+function parseDescriptors(raw) {
   if (!raw || !raw.trim()) return []
   return raw.split(',').map((k) => k.trim()).filter(Boolean)
 }
 
-function formatSourceLabel(source) {
-  if (!source.medium_name) return source.name
-  return `${source.medium_name} - ${source.name}`
-}
-
-function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories, sources }) {
+function AlertForm({ initial, onSave, onCancel, isSubmitting, error, iptcCategories, mediums, channels }) {
   const { t } = useTranslation()
-  const [formData, setFormData] = useState(
-    initial
-      ? {
-          ...initial,
-          expanded_keywords: (initial.expanded_keywords || []).join(', '),
-          source_ids: initial.source_ids || [],
-        }
-      : INITIAL_FORM,
-  )
+  const [form, setForm] = useState(initial || EMPTY_FORM)
   const [suggestions, setSuggestions] = useState([])
   const [suggestionsError, setSuggestionsError] = useState('')
   const [isSuggesting, setIsSuggesting] = useState(false)
 
-  const handleChange = (event) => {
-    const { name, value, type, checked } = event.target
-    if (name === 'keyword') {
-      setSuggestions([])
-      setSuggestionsError('')
-    }
-    setFormData((current) => ({
-      ...current,
-      [name]: type === 'checkbox' ? checked : value,
-    }))
+  const change = (e) => {
+    const { name, type, value, checked } = e.target
+    setForm((s) => ({ ...s, [name]: type === 'checkbox' ? checked : value }))
   }
 
-  const handleSourceToggle = (sourceId) => {
-    setFormData((current) => {
-      const ids = current.source_ids.includes(sourceId)
-        ? current.source_ids.filter((id) => id !== sourceId)
-        : [...current.source_ids, sourceId]
-      return { ...current, source_ids: ids }
+  const toggleInArray = (key, value) => {
+    setForm((s) => {
+      const has = s[key].includes(value)
+      return { ...s, [key]: has ? s[key].filter((v) => v !== value) : [...s[key], value] }
     })
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
+  const submit = (e) => {
+    e.preventDefault()
     const payload = {
-      ...formData,
-      expanded_keywords: parseExpandedKeywords(formData.expanded_keywords),
+      name: form.name.trim(),
+      descriptors: parseDescriptors(form.descriptors),
+      categories: form.categories.map((code) => {
+        const cat = iptcCategories.find((c) => c.code === code)
+        return { code, label: cat?.label || code }
+      }),
+      rss_channels_ids: form.rss_channels_ids.map(String),
+      information_sources_ids: form.information_sources_ids.map(String),
+      cron_expression: form.cron_expression,
+      keyword: form.keyword.trim() || undefined,
+      notify_in_app: form.notify_in_app,
+      notify_email: form.notify_email,
     }
     onSave(payload)
   }
 
-  const handleSuggest = async () => {
-    const keyword = formData.keyword.trim()
-    if (!keyword) {
-      setSuggestions([])
+  const fetchSuggestions = async () => {
+    const kw = form.keyword.trim()
+    if (!kw) {
       setSuggestionsError(t('alerts.enter_keyword_first'))
+      setSuggestions([])
       return
     }
-    setIsSuggesting(true)
-    setSuggestionsError('')
+    setIsSuggesting(true); setSuggestionsError('')
     try {
-      const response = await getAlertSuggestions(keyword)
-      setSuggestions(response.suggestions || [])
-    } catch (requestError) {
+      const res = await getAlertSuggestions(kw)
+      setSuggestions(res.suggestions || [])
+    } catch (err) {
+      setSuggestionsError(err.message || 'Unable to suggest right now.')
       setSuggestions([])
-      setSuggestionsError(requestError.message || 'Unable to load keyword suggestions right now.')
     } finally {
       setIsSuggesting(false)
     }
   }
 
-  const handleSuggestionToggle = (term) => {
-    setFormData((current) => {
-      const currentTerms = parseExpandedKeywords(current.expanded_keywords)
-      const exists = currentTerms.some((item) => item.toLowerCase() === term.toLowerCase())
-      const nextTerms = exists
-        ? currentTerms.filter((item) => item.toLowerCase() !== term.toLowerCase())
-        : [...currentTerms, term].slice(0, 10)
-      return { ...current, expanded_keywords: nextTerms.join(', ') }
-    })
+  const applySuggestion = (term) => {
+    const existing = parseDescriptors(form.descriptors)
+    const lowered = existing.map((s) => s.toLowerCase())
+    if (lowered.includes(term.toLowerCase())) {
+      setForm((s) => ({ ...s, descriptors: existing.filter((x) => x.toLowerCase() !== term.toLowerCase()).join(', ') }))
+    } else {
+      setForm((s) => ({ ...s, descriptors: [...existing, term].slice(0, 10).join(', ') }))
+    }
   }
-
-  const handleApplyAllSuggestions = () => {
-    setFormData((current) => ({ ...current, expanded_keywords: suggestions.join(', ') }))
-  }
-
-  const selectedSuggestions = parseExpandedKeywords(formData.expanded_keywords)
 
   return (
-    <form className="source-form" onSubmit={handleSubmit}>
+    <form className="source-form" onSubmit={submit}>
       <div className="field-grid">
         <label className="field">
           <span>{t('alerts.alert_name')}</span>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="Tech news alert"
-            required
-          />
+          <input type="text" name="name" value={form.name} onChange={change} required maxLength={200} />
         </label>
         <label className="field">
           <span>{t('alerts.keyword')}</span>
           <input
             type="text"
             name="keyword"
-            value={formData.keyword}
-            onChange={handleChange}
-            placeholder="artificial intelligence"
-            required
+            value={form.keyword}
+            onChange={change}
+            placeholder="ai"
           />
-        </label>
-        <label className="field">
-          <span>{t('alerts.iptc_category')}</span>
-          <select name="category" value={formData.category} onChange={handleChange} required>
-            <option value="" disabled>{t('alerts.select_category')}</option>
-            {categories.map((cat) => (
-              <option key={cat.code} value={cat.code}>{cat.label}</option>
-            ))}
-          </select>
         </label>
         <label className="field">
           <span>{t('alerts.related_keywords')}</span>
           <input
             type="text"
-            name="expanded_keywords"
-            value={formData.expanded_keywords}
-            onChange={handleChange}
+            name="descriptors"
+            value={form.descriptors}
+            onChange={change}
             placeholder="machine learning, neural networks, deep learning"
           />
+        </label>
+        <label className="field">
+          <span>cron_expression</span>
+          <input type="text" name="cron_expression" value={form.cron_expression} onChange={change} required />
         </label>
       </div>
 
@@ -188,45 +139,24 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
           <button
             type="button"
             className="secondary-button"
-            onClick={handleSuggest}
+            onClick={fetchSuggestions}
             disabled={isSubmitting || isSuggesting}
           >
             {isSuggesting ? t('alerts.generating') : t('alerts.recommend')}
           </button>
-          {suggestions.length > 0 ? (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleApplyAllSuggestions}
-              disabled={isSubmitting}
-            >
-              {t('alerts.use_all')}
-            </button>
-          ) : null}
         </div>
-
         <p className="panel-card__text">{t('alerts.suggestions_info')}</p>
-
-        {suggestionsError ? (
-          <p className="form-message form-message--error">{suggestionsError}</p>
-        ) : null}
-
+        {suggestionsError ? <p className="form-message form-message--error">{suggestionsError}</p> : null}
         {suggestions.length > 0 ? (
           <div className="alert-suggestions__list">
             {suggestions.map((term) => {
-              const isSelected = selectedSuggestions.some(
-                (item) => item.toLowerCase() === term.toLowerCase(),
-              )
+              const selected = parseDescriptors(form.descriptors).map((s) => s.toLowerCase()).includes(term.toLowerCase())
               return (
                 <button
                   key={term}
                   type="button"
-                  className={
-                    isSelected
-                      ? 'alert-suggestion-chip alert-suggestion-chip--active'
-                      : 'alert-suggestion-chip'
-                  }
-                  onClick={() => handleSuggestionToggle(term)}
+                  className={selected ? 'alert-suggestion-chip alert-suggestion-chip--active' : 'alert-suggestion-chip'}
+                  onClick={() => applySuggestion(term)}
                 >
                   {term}
                 </button>
@@ -236,53 +166,74 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
         ) : null}
       </div>
 
-      {sources.length > 0 ? (
-        <div style={{ marginTop: '0.5rem' }}>
-          <span style={{ fontWeight: 700, fontSize: '0.92rem' }}>
-            {t('alerts.monitor_sources')}
-          </span>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-            {sources.map((src) => (
-              <label
-                key={src.id}
-                className="field field--inline"
-                style={{
-                  background: formData.source_ids.includes(src.id) ? 'var(--ok-soft)' : 'transparent',
-                  padding: '0.35rem 0.6rem',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                }}
+      <fieldset>
+        <legend>{t('alerts.iptc_category')} ({t('alerts.select_one_or_more') || 'one or more'})</legend>
+        <div className="alert-suggestions__list">
+          {iptcCategories.map((cat) => {
+            const selected = form.categories.includes(cat.code)
+            return (
+              <button
+                key={cat.code}
+                type="button"
+                className={selected ? 'alert-suggestion-chip alert-suggestion-chip--active' : 'alert-suggestion-chip'}
+                onClick={() => toggleInArray('categories', cat.code)}
               >
-                <input
-                  type="checkbox"
-                  checked={formData.source_ids.includes(src.id)}
-                  onChange={() => handleSourceToggle(src.id)}
-                />
-                <span style={{ fontSize: '0.85rem' }}>{formatSourceLabel(src)}</span>
-              </label>
-            ))}
-          </div>
+                {cat.label}
+              </button>
+            )
+          })}
         </div>
-      ) : null}
+      </fieldset>
 
-      <div className="source-form__actions" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-        <label className="field field--inline">
-          <input
-            type="checkbox"
-            name="notify_in_app"
-            checked={formData.notify_in_app}
-            onChange={handleChange}
-          />
-          <span>{t('alerts.in_app')}</span>
+      <fieldset>
+        <legend>Information Sources (medios)</legend>
+        <div className="alert-suggestions__list">
+          {mediums.map((m) => {
+            const idStr = String(m.id)
+            const selected = form.information_sources_ids.includes(idStr)
+            return (
+              <button
+                key={m.id}
+                type="button"
+                className={selected ? 'alert-suggestion-chip alert-suggestion-chip--active' : 'alert-suggestion-chip'}
+                onClick={() => toggleInArray('information_sources_ids', idStr)}
+              >
+                {m.name}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>RSS Channels</legend>
+        <div className="alert-suggestions__list" style={{ maxHeight: 220, overflowY: 'auto' }}>
+          {channels.map((ch) => {
+            const idStr = String(ch.id)
+            const selected = form.rss_channels_ids.includes(idStr)
+            return (
+              <button
+                key={ch.id}
+                type="button"
+                className={selected ? 'alert-suggestion-chip alert-suggestion-chip--active' : 'alert-suggestion-chip'}
+                onClick={() => toggleInArray('rss_channels_ids', idStr)}
+                title={ch.url}
+              >
+                #{ch.id} {ch._medium?.name}
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
+
+      <div className="field-grid">
+        <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+          <input type="checkbox" name="notify_in_app" checked={form.notify_in_app} onChange={change} />
+          <span>{t('alerts.notify_in_app') || 'In-app notification'}</span>
         </label>
-        <label className="field field--inline">
-          <input
-            type="checkbox"
-            name="notify_email"
-            checked={formData.notify_email}
-            onChange={handleChange}
-          />
-          <span>{t('alerts.email_notif')}</span>
+        <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+          <input type="checkbox" name="notify_email" checked={form.notify_email} onChange={change} />
+          <span>{t('alerts.notify_email') || 'Email notification'}</span>
         </label>
       </div>
 
@@ -290,233 +241,216 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, categories,
 
       <div className="source-form__actions">
         <button type="submit" className="primary-button" disabled={isSubmitting}>
-          {isSubmitting ? t('alerts.saving') : initial ? t('alerts.save_changes') : t('alerts.add')}
+          {isSubmitting ? t('sources.saving') : initial ? t('sources.save_changes') : t('sources.add')}
         </button>
         <button type="button" className="secondary-button" onClick={onCancel}>
-          {t('alerts.cancel')}
+          {t('sources.cancel')}
         </button>
       </div>
     </form>
   )
 }
 
-function AlertRow({ alert, onEdit, onDelete, onToggle, busy, canEdit }) {
-  const { t } = useTranslation()
-
-  return (
-    <div className="source-row">
-      <div className="source-row__info">
-        <strong className="source-row__name">{alert.name}</strong>
-        <span className="source-row__url">
-          {t('alerts.keyword')}: <em>{alert.keyword}</em> &mdash; {t('alerts.iptc_category')}: <em>{alert.category}</em>
-        </span>
-        {alert.expanded_keywords && alert.expanded_keywords.length > 0 ? (
-          <span className="source-row__url">
-            Related: {alert.expanded_keywords.join(', ')}
-          </span>
-        ) : null}
-        {alert.source_ids && alert.source_ids.length > 0 ? (
-          <span className="source-row__url">
-            {t('alerts.sources_selected', { count: alert.source_ids.length })}
-          </span>
-        ) : (
-          <span className="source-row__url">{t('alerts.sources_all')}</span>
-        )}
-        <span className="source-row__url">
-          {alert.notify_in_app ? t('alerts.in_app') : null}
-          {alert.notify_in_app && alert.notify_email ? ' · ' : null}
-          {alert.notify_email ? t('alerts.email_notif') : null}
-          {!alert.notify_in_app && !alert.notify_email ? t('alerts.no_notifications_config') : null}
-        </span>
-      </div>
-
-      <span className={alert.is_active ? 'source-badge source-badge--active' : 'source-badge source-badge--inactive'}>
-        {alert.is_active ? t('alerts.active') : t('alerts.inactive')}
-      </span>
-
-      {canEdit ? (
-        <div className="source-row__actions">
-          <button type="button" className="secondary-button" onClick={() => onToggle(alert)} disabled={busy}>
-            {alert.is_active ? t('alerts.deactivate') : t('alerts.activate')}
-          </button>
-          <button type="button" className="secondary-button" onClick={() => onEdit(alert)} disabled={busy}>
-            {t('alerts.edit')}
-          </button>
-          <button type="button" className="danger-button" onClick={() => onDelete(alert.id)} disabled={busy}>
-            {t('alerts.delete')}
-          </button>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 export default function AlertsPage() {
-  const { user } = useAuth()
   const { t } = useTranslation()
-  const canEdit = user?.role !== 'lector'
-  const [state, dispatch] = useReducer(alertsReducer, {
-    status: 'loading',
-    items: [],
-    error: '',
-  })
+  const canEdit = true
+
+  const [items, setItems] = useState([])
+  const [iptcCategories, setIptcCategories] = useState([])
+  const [mediums, setMediums] = useState([])
+  const [channels, setChannels] = useState([])
+  const [status, setStatus] = useState('loading')
+  const [error, setError] = useState('')
+
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [busyId, setBusyId] = useState(null)
-  const [categories, setCategories] = useState([])
-  const [sources, setSources] = useState([])
 
   const load = useCallback(async () => {
-    dispatch({ type: 'LOADING' })
+    setStatus('loading'); setError('')
     try {
-      const [items, cats, srcs] = await Promise.all([
+      const [alerts, iptc, meds, cats] = await Promise.all([
         getAlerts(),
         request('/alerts/categories'),
-        getSources(),
+        getInformationSources(),
+        getCategories(),
       ])
-      dispatch({ type: 'LOADED', items })
-      setCategories(cats)
-      setSources(srcs)
+      // Cargar canales para todos los medios (necesarios para el form)
+      const allChannels = []
+      for (const m of meds) {
+        const list = await getRssChannelsForSource(m.id)
+        for (const ch of list) {
+          allChannels.push({ ...ch, _medium: m, _category: cats.find((c) => c.id === ch.category_id) })
+        }
+      }
+      setItems(alerts)
+      setIptcCategories(iptc)
+      setMediums(meds)
+      setChannels(allChannels)
+      setStatus('success')
     } catch (err) {
-      dispatch({ type: 'ERROR', error: err.message })
+      setError(err.message || 'Error loading data')
+      setStatus('error')
     }
   }, [])
 
   useEffect(() => { load() }, [load])
 
-  const handleAdd = async (formData) => {
-    setFormError('')
-    setIsSubmitting(true)
+  const onSave = async (payload) => {
+    setSubmitting(true); setFormError('')
     try {
-      const created = await createAlert(formData)
-      dispatch({ type: 'ADD', item: created })
-      setShowForm(false)
+      if (editing) {
+        await updateAlert(editing.user_id, editing.id, payload)
+      } else {
+        await createAlert(payload)
+      }
+      setShowForm(false); setEditing(null)
+      await load()
     } catch (err) {
-      setFormError(err.message)
+      setFormError(err.message || 'Error saving alert')
     } finally {
-      setIsSubmitting(false)
+      setSubmitting(false)
     }
   }
 
-  const handleUpdate = async (formData) => {
-    setFormError('')
-    setIsSubmitting(true)
-    try {
-      const updated = await updateAlert(editing.id, formData)
-      dispatch({ type: 'UPDATE', item: updated })
-      setEditing(null)
-    } catch (err) {
-      setFormError(err.message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleDelete = async (id) => {
-    if (!window.confirm(t('alerts.delete_confirm'))) return
-    setBusyId(id)
-    try {
-      await deleteAlert(id)
-      dispatch({ type: 'REMOVE', id })
-    } catch (err) {
-      dispatch({ type: 'ERROR', error: err.message })
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const handleToggle = async (alert) => {
+  const onDelete = async (alert) => {
+    if (!window.confirm(t('alerts.delete_confirm') || '¿Eliminar alerta?')) return
     setBusyId(alert.id)
     try {
-      const updated = alert.is_active
-        ? await deactivateAlert(alert.id)
-        : await activateAlert(alert.id)
-      dispatch({ type: 'UPDATE', item: updated })
+      await deleteAlert(alert.user_id, alert.id)
+      await load()
     } catch (err) {
-      dispatch({ type: 'ERROR', error: err.message })
+      setError(err.message)
     } finally {
       setBusyId(null)
     }
   }
 
-  const openAdd = () => { setEditing(null); setFormError(''); setShowForm(true) }
-  const openEdit = (alert) => { setEditing(alert); setFormError(''); setShowForm(false) }
+  const onToggle = async (alert) => {
+    setBusyId(alert.id)
+    try {
+      if (alert.is_active) {
+        await deactivateAlert(alert.user_id, alert.id)
+      } else {
+        await activateAlert(alert.user_id, alert.id)
+      }
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const openAdd = () => { setEditing(null); setShowForm(true); setFormError('') }
+  const openEdit = (alert) => {
+    setEditing({
+      ...alert,
+      // Hidratar form a partir de la respuesta canónica
+      _form: {
+        name: alert.name,
+        keyword: alert.keyword || '',
+        descriptors: (alert.descriptors || []).join(', '),
+        categories: (alert.categories || []).map((c) => c.code),
+        rss_channels_ids: (alert.rss_channels_ids || []).map(String),
+        information_sources_ids: (alert.information_sources_ids || []).map(String),
+        cron_expression: alert.cron_expression,
+        notify_in_app: alert.notify_in_app,
+        notify_email: alert.notify_email,
+      },
+    })
+    setShowForm(true); setFormError('')
+  }
   const cancelForm = () => { setShowForm(false); setEditing(null); setFormError('') }
 
   return (
     <section className="sources-page">
       <div className="hero-card">
-        <p className="eyebrow">{t('alerts.eyebrow')}</p>
-        <h1>{t('alerts.title')}</h1>
-        <p>{t('alerts.subtitle')}</p>
+        <p className="eyebrow">{t('alerts.eyebrow') || 'Alerts'}</p>
+        <h1>{t('alerts.title') || 'Alertas'}</h1>
+        <p>{t('alerts.subtitle') || 'Define palabras clave y filtros para recibir notificaciones'}</p>
       </div>
 
       <div className="sources-toolbar">
-        {canEdit && !showForm && !editing ? (
+        {canEdit && !showForm ? (
           <button type="button" className="primary-button" onClick={openAdd}>
-            {t('alerts.add_alert')}
+            {t('alerts.add') || 'Nueva alerta'}
           </button>
         ) : null}
       </div>
 
       {showForm ? (
         <div className="panel-card">
-          <h2>{t('alerts.new_alert')}</h2>
+          <h2>{editing ? (t('alerts.edit') || 'Editar alerta') : (t('alerts.new') || 'Nueva alerta')}</h2>
           <AlertForm
-            onSave={handleAdd}
+            initial={editing?._form || null}
+            onSave={onSave}
             onCancel={cancelForm}
-            isSubmitting={isSubmitting}
+            isSubmitting={submitting}
             error={formError}
-            categories={categories}
-            sources={sources}
+            iptcCategories={iptcCategories}
+            mediums={mediums}
+            channels={channels}
           />
         </div>
       ) : null}
 
-      {state.status === 'loading' ? (
-        <p className="sources-feedback">{t('alerts.loading')}</p>
+      {status === 'loading' ? <p className="sources-feedback">{t('sources.loading')}</p> : null}
+      {status === 'error' ? <p className="form-message form-message--error">{error}</p> : null}
+
+      {status === 'success' && items.length === 0 ? (
+        <div className="panel-card sources-empty"><p>{t('alerts.empty') || 'No tienes alertas aún.'}</p></div>
       ) : null}
 
-      {state.status === 'error' ? (
-        <p className="form-message form-message--error">{state.error}</p>
-      ) : null}
-
-      {state.status === 'success' && state.items.length === 0 ? (
-        <div className="panel-card sources-empty">
-          <p>{t('alerts.empty')}</p>
-        </div>
-      ) : null}
-
-      {state.status === 'success' && state.items.length > 0 ? (
+      {status === 'success' && items.length > 0 ? (
         <div className="sources-list">
-          {state.items.map((alert) =>
-            editing?.id === alert.id ? (
-              <div key={alert.id} className="panel-card">
-                <h2>{t('alerts.edit_alert')}</h2>
-                <AlertForm
-                  initial={alert}
-                  onSave={handleUpdate}
-                  onCancel={cancelForm}
-                  isSubmitting={isSubmitting}
-                  error={formError}
-                  categories={categories}
-                  sources={sources}
-                />
+          {items.map((alert) => (
+            <div key={alert.id} className="source-row">
+              <div className="source-row__info">
+                <strong className="source-row__name">{alert.name}</strong>
+                {alert.keyword ? (
+                  <span className="source-row__url">keyword: {alert.keyword}</span>
+                ) : null}
+                {alert.descriptors?.length ? (
+                  <span className="source-row__url">descriptors: {alert.descriptors.join(', ')}</span>
+                ) : null}
+                {alert.categories?.length ? (
+                  <span className="source-row__url">
+                    categories: {alert.categories.map((c) => c.label).join(', ')}
+                  </span>
+                ) : null}
+                {alert.information_sources_ids?.length ? (
+                  <span className="source-row__url">
+                    media: {alert.information_sources_ids.length} selected
+                  </span>
+                ) : null}
+                {alert.rss_channels_ids?.length ? (
+                  <span className="source-row__url">
+                    channels: {alert.rss_channels_ids.length} selected
+                  </span>
+                ) : null}
+                <span className="source-row__url">cron: {alert.cron_expression}</span>
               </div>
-            ) : (
-              <AlertRow
-                key={alert.id}
-                alert={alert}
-                onEdit={openEdit}
-                onDelete={handleDelete}
-                onToggle={handleToggle}
-                busy={busyId === alert.id}
-                canEdit={canEdit}
-              />
-            ),
-          )}
+              <span className={alert.is_active ? 'source-badge source-badge--active' : 'source-badge source-badge--inactive'}>
+                {alert.is_active ? (t('sources.active') || 'Activo') : (t('sources.inactive') || 'Inactivo')}
+              </span>
+              {canEdit ? (
+                <div className="source-row__actions">
+                  <button type="button" className="secondary-button" onClick={() => onToggle(alert)} disabled={busyId === alert.id}>
+                    {alert.is_active ? (t('sources.deactivate') || 'Desactivar') : (t('sources.activate') || 'Activar')}
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => openEdit(alert)} disabled={busyId === alert.id}>
+                    {t('sources.edit') || 'Editar'}
+                  </button>
+                  <button type="button" className="danger-button" onClick={() => onDelete(alert)} disabled={busyId === alert.id}>
+                    {t('sources.delete') || 'Eliminar'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ))}
         </div>
       ) : null}
     </section>

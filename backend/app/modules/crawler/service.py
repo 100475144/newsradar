@@ -1,4 +1,9 @@
-"""Servicio del módulo crawler: se implementará la lógica de crawling, scraping y procesamiento inicial de fuentes."""
+"""Servicio del módulo crawler: lógica de crawling, scraping y procesamiento inicial.
+
+Adaptado al modelo split (T6.3): trabaja con ``RSSChannel`` y ``Category`` en
+lugar de la tabla ``Source`` antigua.
+"""
+
 from datetime import datetime
 
 import feedparser
@@ -6,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.news.schemas import NewsCreateInternal
 from app.modules.news.service import NewsService
-from app.modules.sources.repository import SourceRepository
+from app.modules.sources.models import Category, InformationSource, RSSChannel
 
 from .schemas import CrawlResult, ParsedFeedItem, SourceStub
 
@@ -15,20 +20,28 @@ class CrawlerService:
     def __init__(self, db: Session, news_service: NewsService):
         self.db = db
         self.news_service = news_service
-        self.source_repository = SourceRepository(db)
 
     def get_active_sources(self) -> list[SourceStub]:
-        active_sources = self.source_repository.list_active()
+        rows = (
+            self.db.query(RSSChannel, Category, InformationSource)
+            .join(Category, Category.id == RSSChannel.category_id)
+            .join(
+                InformationSource,
+                InformationSource.id == RSSChannel.information_source_id,
+            )
+            .filter(RSSChannel.is_active.is_(True))
+            .all()
+        )
         return [
             SourceStub(
-                id=source.id,
-                medium_name=source.medium_name,
-                name=source.name,
-                url=source.url,
-                category=getattr(source, "category", None),
-                is_active=source.is_active,
+                id=channel.id,
+                medium_name=medium.name,
+                name=channel.name or medium.name,
+                url=channel.url,
+                category=category.name,
+                is_active=channel.is_active,
             )
-            for source in active_sources
+            for channel, category, medium in rows
         ]
 
     def crawl_all_active_sources(self) -> list[CrawlResult]:
@@ -132,7 +145,7 @@ class CrawlerService:
             return normalized_item_category, "rss"
 
         return None, "unknown"
-    
+
     @staticmethod
     def _normalize_language(value: str | None) -> str | None:
         if not value:

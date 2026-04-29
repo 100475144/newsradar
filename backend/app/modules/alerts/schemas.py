@@ -1,10 +1,24 @@
-"""Schemas del módulo alerts: modelos de entrada/salida para validar requests y responses de alertas."""
+"""Schemas de Alertas alineados con la API oficial.
+
+Modelo oficial (correo del profesor 29-abr):
+
+    class AlertBase:
+        name: str (max 200)
+        descriptors: List[str]
+        categories: List[AlertCategoryItem]
+        rss_channels_ids: List[str]
+        information_sources_ids: List[str]
+        cron_expression: str (max 120)
+
+Campos internos no expuestos en la API oficial pero mantenidos en BD para
+nuestra UX: ``keyword``, ``notify_in_app``, ``notify_email``, ``is_active``.
+"""
+
 import re
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.core.iptc import IPTC_CATEGORIES, IPTC_CATEGORY_CODES
 
 CRON_REGEX = re.compile(
     r"^(\*|([0-5]?\d)(-([0-5]?\d))?(,([0-5]?\d)(-([0-5]?\d))?)*|(\*/\d+))"
@@ -14,15 +28,33 @@ CRON_REGEX = re.compile(
     r"\s+(\*|[0-6](-[0-6])?(,[0-6](-[0-6])?)*|(\*/\d+))$"
 )
 
+
+# ─────────────────────────────────────────────────────────────────────
+# Tipos auxiliares
+# ─────────────────────────────────────────────────────────────────────
+
+
+class AlertCategoryItem(BaseModel):
+    """Categoría asignada a una alerta. Replica el modelo oficial."""
+
+    code: str = Field(..., min_length=1, max_length=60)
+    label: str = Field(..., min_length=1, max_length=120)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Schemas oficiales
+# ─────────────────────────────────────────────────────────────────────
+
+
 class AlertBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
-    keyword: str = Field(..., min_length=1, max_length=255)
-    category: str = Field(..., min_length=1, max_length=255)
-    expanded_keywords: List[str] = Field(default_factory=list, max_length=10)
-    source_ids: List[int] = Field(default_factory=list, description="IDs of RSS sources to monitor (empty = all)")
-    cron_expression: str = Field(default="*/5 * * * *", max_length=100, description="Cron expression for alert monitoring schedule")
-    notify_in_app: bool = True
-    notify_email: bool = False
+    """Modelo oficial alineado con el ``main.py`` del aula global."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+    descriptors: List[str] = Field(default_factory=list)
+    categories: List[AlertCategoryItem] = Field(default_factory=list)
+    rss_channels_ids: List[str] = Field(default_factory=list)
+    information_sources_ids: List[str] = Field(default_factory=list)
+    cron_expression: str = Field(..., min_length=1, max_length=120)
 
     @field_validator("cron_expression")
     @classmethod
@@ -30,56 +62,56 @@ class AlertBase(BaseModel):
         value = value.strip()
         if not CRON_REGEX.match(value):
             raise ValueError(
-                f"Invalid cron expression '{value}'. Expected standard 5-field cron (e.g. '*/5 * * * *')."
-            )
-        return value
-    
-    @field_validator("category")
-    @classmethod
-    def validate_iptc_category(cls, value: str) -> str:
-        value = value.strip().lower()
-        if value not in IPTC_CATEGORIES:
-            allowed = ", ".join(IPTC_CATEGORY_CODES)
-            raise ValueError(
-                f"Invalid IPTC category '{value}'. Must be one of: {allowed}"
+                f"Invalid cron expression '{value}'. Expected standard 5-field cron."
             )
         return value
 
-    @field_validator("expanded_keywords")
+    @field_validator("descriptors")
     @classmethod
-    def validate_expanded_keywords(cls, value: List[str]) -> List[str]:
-        cleaned = []
-        seen = set()
-
-        for item in value:
-            item = item.strip()
-            if not item:
+    def validate_descriptors(cls, value: List[str]) -> List[str]:
+        cleaned: List[str] = []
+        seen: set[str] = set()
+        for raw in value or []:
+            term = (raw or "").strip()
+            if not term:
                 continue
-            lowered = item.lower()
-            if lowered not in seen:
-                seen.add(lowered)
-                cleaned.append(item)
-
-        if not (3 <= len(cleaned) <= 10):
-            raise ValueError("expanded_keywords must contain between 3 and 10 items.")
-
+            lowered = term.lower()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            cleaned.append(term)
         return cleaned
 
 
+class AlertCreateInternal(AlertBase):
+    """Payload interno extendido para crear alertas desde la UI propia.
+
+    Añade campos no presentes en la API oficial pero útiles para nuestro
+    flujo de notificaciones (canales preferidos del usuario, keyword principal
+    para matching, etc.).
+    """
+
+    keyword: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    notify_in_app: bool = True
+    notify_email: bool = False
+
+
 class AlertCreate(AlertBase):
-    pass
+    """Payload oficial para POST /users/{user_id}/alerts."""
 
 
 class AlertUpdate(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    keyword: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    category: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    expanded_keywords: Optional[List[str]] = None
-    source_ids: Optional[List[int]] = None
-    cron_expression: Optional[str] = Field(default=None, max_length=100)
-    is_active: Optional[bool] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    descriptors: Optional[List[str]] = None
+    categories: Optional[List[AlertCategoryItem]] = None
+    rss_channels_ids: Optional[List[str]] = None
+    information_sources_ids: Optional[List[str]] = None
+    cron_expression: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    # Campos internos opcionales:
+    keyword: Optional[str] = Field(default=None, min_length=1, max_length=200)
     notify_in_app: Optional[bool] = None
     notify_email: Optional[bool] = None
+    is_active: Optional[bool] = None
 
     @field_validator("cron_expression")
     @classmethod
@@ -89,57 +121,43 @@ class AlertUpdate(BaseModel):
         value = value.strip()
         if not CRON_REGEX.match(value):
             raise ValueError(
-                f"Invalid cron expression '{value}'. Expected standard 5-field cron (e.g. '*/5 * * * *')."
-            )
-        return value
-    
-    @field_validator("category")
-    @classmethod
-    def validate_iptc_category(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return value
-        value = value.strip().lower()
-        if value not in IPTC_CATEGORIES:
-            allowed = ", ".join(IPTC_CATEGORY_CODES)
-            raise ValueError(
-                f"Invalid IPTC category '{value}'. Must be one of: {allowed}"
+                f"Invalid cron expression '{value}'. Expected standard 5-field cron."
             )
         return value
 
-    @field_validator("expanded_keywords")
+    @field_validator("descriptors")
     @classmethod
-    def validate_expanded_keywords(cls, value: Optional[List[str]]) -> Optional[List[str]]:
+    def validate_descriptors(cls, value: Optional[List[str]]) -> Optional[List[str]]:
         if value is None:
             return value
-
-        cleaned = []
-        seen = set()
-
-        for item in value:
-            item = item.strip()
-            if not item:
+        cleaned: List[str] = []
+        seen: set[str] = set()
+        for raw in value:
+            term = (raw or "").strip()
+            if not term:
                 continue
-            lowered = item.lower()
-            if lowered not in seen:
-                seen.add(lowered)
-                cleaned.append(item)
-
-        if not (3 <= len(cleaned) <= 10):
-            raise ValueError("expanded_keywords must contain between 3 and 10 items.")
-
+            lowered = term.lower()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            cleaned.append(term)
         return cleaned
 
 
-class AlertResponse(BaseModel):
+class AlertResponse(AlertBase):
+    """Respuesta oficial: ``AlertBase`` + ``id`` + ``user_id``.
+
+    La respuesta incluye además los campos internos que nuestro frontend
+    necesita para mostrar la alerta sin perder funcionalidad.
+    """
+
     id: int
-    name: str
-    keyword: str
-    expanded_keywords: list[str]
-    category: str
-    source_ids: list[int]
-    is_active: bool
-    notify_in_app: bool
-    notify_email: bool
-    created_by: int
+    user_id: int
+
+    # Campos extra (no en la API oficial pero útiles para nuestra UI).
+    keyword: Optional[str] = None
+    notify_in_app: bool = True
+    notify_email: bool = False
+    is_active: bool = True
 
     model_config = ConfigDict(from_attributes=True)

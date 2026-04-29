@@ -40,6 +40,7 @@ def news_stats(
     current_user: User = Depends(get_current_active_verified_user),
     service: NewsService = Depends(get_news_service),
 ):
+    """Stats globales del sistema (no per-user)."""
     return service.get_stats()
 
 
@@ -50,7 +51,40 @@ def news_wordcloud(
     current_user: User = Depends(get_current_active_verified_user),
     service: NewsService = Depends(get_news_service),
 ):
+    """Wordcloud globales (no per-user)."""
     return service.get_wordcloud(category=category, limit=limit)
+
+
+# ── Per-user (CAMBIO #2: dashboards solo con datos del user logueado) ─
+
+
+@router.get("/me/stats")
+def my_news_stats(
+    current_user: User = Depends(get_current_active_verified_user),
+    service: NewsService = Depends(get_news_service),
+):
+    """Stats de noticias matcheadas por las alertas del usuario logueado.
+
+    Las "noticias del usuario" se computan a partir de las notificaciones
+    generadas por el motor de matching: ``news ↔ notification ↔ user``.
+    """
+    return service.get_stats_for_user(current_user.id)
+
+
+@router.get("/me/wordcloud")
+def my_news_wordcloud(
+    category: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=10, le=200),
+    current_user: User = Depends(get_current_active_verified_user),
+    service: NewsService = Depends(get_news_service),
+):
+    """Wordcloud calculada SOLO con las noticias matcheadas por las alertas
+    del usuario logueado (CAMBIO #2 del enunciado, duda 21-abr y 28-abr)."""
+    return service.get_wordcloud_for_user(
+        user_id=current_user.id,
+        category=category,
+        limit=limit,
+    )
 
 
 @router.get("/{news_id}", response_model=NewsResponse)

@@ -1,327 +1,270 @@
 # Reparto de tareas finales — NEWSRADAR
 
-Este documento recoge **todo lo que falta** para cerrar el proyecto con nota máxima, cruzando el código actual con:
-- La revisión manual del equipo
-- El `DOSS-CHECKLIST_2026` que nos dio el profesor (40 preguntas del proyecto + 26 de proceso)
-- Los bugs detectados en pruebas entre usuarios
+**Última actualización:** 30 abril 2026 (tras cerrar Fase 2 completa).
 
-Cada persona trabaja en su rama `feature/<nombre>-<tema>` y abre PR a `main` con review de mínimo 1 compañero.
+Este documento se cruza con:
+- `DOSS-CHECKLIST_2026` (40 checks de proyecto + 26 de proceso)
+- Adenda oficial: desaparece el rol "lector" (CAMBIO #1)
+- Adenda oficial: registro automático con rol gestor (CAMBIO #1bis)
+- Dudas 21-abr y 28-abr (CAMBIO #2: dashboards per-user)
+- Correo 29-abr + `main.py` oficial del aula global (CAMBIO #3)
 
----
-
-## 🚨 BUGS CRÍTICOS DETECTADOS (prioridad 0)
-
-Confirmados en código, con **causa raíz común**: el sistema trata sources/alertas/news como entidades *per-usuario* en vez de globales.
-
-### B0 — Raíz: seed per-user en `auth/service.py:30`
-Al registrarse un usuario, `register_user` llama a `seed_default_sources_for_user(db, user.id)` que **clona las 104 fuentes RSS** marcadas con `created_by = <nuevo user>`. Esto provoca:
-- Con N usuarios hay N × 104 sources en BD → trabajo duplicado del crawler y news duplicadas.
-- Cada usuario solo ve las news de SUS sources.
-
-**Síntoma reproducible**: un usuario nuevo no ve las noticias antiguas del admin; solo las que el crawler parsea después de su registro (porque esas sí van ligadas a sus copias de sources). Replicar:
-1. Admin crea alertas, el crawler corre, genera news.
-2. Registrar segundo usuario → ve apartado de news **vacío**.
-3. Esperar al siguiente tick del crawler → ahora sí aparecen news (ligadas a sus copias).
-
-### B1 — Alertas personales en vez de globales
-`alerts/repository.py::list_for_user` filtra por `created_by == user_id`. Un lector no ve alertas creadas por gestores.
-
-### B2 — Notificaciones solo al creador
-`alerts/matching.py:152-156` solo crea notificación/email para `alert.created_by`. Los lectores nunca reciben notificaciones.
-
-### B3 — News filtradas por usuario
-`news/repository.py:45` filtra por `Source.created_by == user_id`. Encaja con B0: cada usuario solo ve las news de SUS sources clonadas.
-
-### Modelo de dominio correcto (según enunciado del profesor)
-- Sources, alertas y noticias son **entidades globales del sistema**.
-- **Gestor/Admin** crea/edita/borra sources y alertas.
-- **Lector** ve todo (sources, alertas, news) pero no gestiona.
-- **Notificaciones** se generan por usuario: cuando una news hace match con una alerta, se crea una notificación para **cada usuario activo y verificado**.
+Cada persona trabaja en `feature/<nombre>-<tema>` y abre PR a `main` con review de mínimo 1 compañero.
 
 ---
 
-## Resumen del reparto
+## ✅ Estado global de las fases
 
-| # | Tarea | Responsable | Prioridad |
+| Fase | Contenido | Estado |
+|---|---|---|
+| **Fase 0** | Infra base + cumplir adenda CAMBIO #1/#1bis + verificaciones | ✅ Cerrada (rama `feature/phase0-cristina`) |
+| **Fase 1** | Refactor masivo para alinear API con `main.py` oficial (CAMBIO #3) | ✅ Cerrada (rama `feature/phase1-cristina-t6.3-t6.4`) |
+| **Fase 2** | Dashboard per-user + tests ampliados + cobertura + documentación + ADRs + diagramas + .env.example | ✅ Cerrada (rama `feature/phase2-cristina`) |
+| **Fase 3** | Tests frontend + CD + Sonar + traceability + prompts IA | 🔴 Pendiente |
+
+---
+
+## 📢 Cambios oficiales sobre el enunciado (todos cubiertos)
+
+### CAMBIO #1 — Desaparece el rol "lector" — ✅ Aplicado en Fase 0
+- Solo existen gestores (más admin = gestor inicial).
+- El **API debe seguir soportando** creación y asignación de roles → endpoints admin se mantienen.
+- Cualquier UX condicionada por `role == "lector"` eliminada.
+
+### CAMBIO #1bis — Asignación automática de rol "gestor" — ✅ Aplicado en Fase 0
+> *"Todo nuevo usuario tendrá el rol de 'gestor' automáticamente. Eso sí, el rol de 'admin' debe existir."*
+
+- El registro nunca acepta `role` ni `role_ids` en el body.
+- El servidor asigna `gestor` automáticamente vía `role_ids` (T6.2).
+- El rol `admin` se conserva (seed inicial + endpoints admin).
+
+### CAMBIO #2 — Dashboard/WordCloud/Stats filtran por alertas del usuario logueado — 🟡 Pendiente Fase 2
+> *"La información se genera solamente con los datos del usuario que está logueado."*
+
+- Alertas y notificaciones ya son per-usuario tras T6.4.
+- Sources y News siguen globales (B0/B3 vigentes).
+- **Pendiente**: el frontend debe filtrar dashboard, wordcloud y stats por las alertas del usuario logueado (tarea **T4/T5**).
+
+### CAMBIO #3 — La API debe cumplirse exactamente — ✅ Aplicado en Fase 1
+- El profesor entregó el `main.py` oficial.
+- **Operaciones y modelos NO se pueden cambiar.** Solo se pueden añadir endpoints auxiliares.
+- Toda la API se ha realineado: prefijo `/api/v1`, schemas, modelos, endpoints anidados, tablas split, etc.
+
+---
+
+## 📋 Estado actual frente a los 40 checks del profesor
+
+Leyenda: ✅ hecho · 🟡 parcial · ❌ pendiente
+
+| # | Check | Estado | Notas |
 |---|---|---|---|
-| B0 | Eliminar seed per-user en registro + sources globales | **100475102** | 🔴 |
-| B1 | Fix alertas globales (repositorio + UI + tests) | **100475102** | 🔴 |
-| B2 | Fix notificaciones a todos los lectores (matching) | **100475102** | 🔴 |
-| B3 | Fix visibilidad de news (todos los autenticados ven todas las noticias) | **100475102** | 🔴 |
-| 1 | `.env.example` (raíz + backend) | **Cristina** | 🟡 |
-| 2 | Blindaje `conftest.py` contra BD principal | **Adrian** | 🔴 |
-| 3 | CI real con GitHub Actions (build + test + lint) | **Javier** | 🔴 |
-| 4 | Despliegue automático en pipeline (CD) | **Javier** | 🟡 |
-| 5 | Cobertura de pruebas + informe automático | **Adrian** | 🟡 |
-| 6 | Tests backend: auth, sources, alertas globales | **Adrian** | 🔴 |
-| 7 | Tests crawler (éxito, error, dedup) | **100475101** | 🟡 |
-| 8 | Smoke tests frontend (vitest) | **100475102** | 🟡 |
-| 9 | Unificar `CRAWLER_CRON_EXPRESSION` en docker-compose | **100475101** | 🔴 |
-| 10 | Verificar recommender devuelve 3-10 términos | **100475101** | 🟡 |
-| 11 | Verificar límite máximo 20 alertas/gestor | **100475101** | 🟡 |
-| 12 | Campo "organización" en registro | **Cristina** | 🟡 |
-| 13 | Docs: `architecture.md`, `api-design.md`, `database-design.md` | **Cristina** | 🔴 |
-| 14 | Mover ADRs de `docs/decisions` → `docs/adr` | **Cristina** | 🟡 |
-| 15 | Diagramas de arquitectura (bloques, flujo, despliegue) | **Cristina** | 🔴 |
-| 16 | Trazabilidad requisitos ↔ código (tabla en `docs/`) | **Cristina** | 🟡 |
-| 17 | Registro de prompts IA (`docs/ai-prompts.md`) | **Cristina** | 🟡 |
-| 18 | Dashboard: nubes de palabras por categoría | **Manso** | 🟡 |
-| 19 | Dashboard: nº total noticias + alertas por categoría | **Manso** | 🟡 |
-| 20 | i18n ES/EN en frontend | **Manso** | 🟡 |
-| 21 | Ocultar acciones al rol lector en la UI | **Manso** | 🟡 |
-| 22 | Script/checklist de demo reproducible | **Javier** | 🟡 |
-| 23 | SonarQube o métricas de calidad en CI | **Javier** | 🟢 |
+| 1 | Alertas sobre palabra clave | ✅ | Funciona |
+| 2 | Recomienda 3-10 sinónimos | ✅ | Recommender garantizado en Fase 0 (T9) |
+| 3 | Límite 20 alertas/gestor | ✅ | `MAX_ALERTS = 20` verificado (T10) |
+| 4 | Selección fuentes específicas | ✅ | `rss_channels_ids` + `information_sources_ids` (T6.4) |
+| 5 | Categoría IPTC primer nivel | ✅ | `categories: List[{code, label}]` (T6.4) |
+| 6 | Cron expression | ✅ | APScheduler + `CRAWLER_CRON_EXPRESSION` |
+| 7 | Clasificación según alerta o fuente | ✅ | `resolve_news_classification` |
+| 8 | Email al detectar match | ✅ | MailHog en dev |
+| 9 | Mensaje al buzón interno | ✅ | NotificationDetailResponse |
+| 10 | Título "Actualización de [alerta] en [día/hora]" | ✅ | Formato dd/mm/yyyy HH:MM |
+| 11 | Resumen del RSS en notificación | ✅ | Body de notificación incluye summary |
+| 12 | Alta de canales RSS asociados a un medio | ✅ | `/api/v1/information-sources/{id}/rss-channels` (T6.3) |
+| 13 | Mínimo 100 canales | ✅ | 110 sembrados |
+| 14 | ≥10 medios diferentes | ✅ | 20 medios |
+| 15 | Canales para todas las cat IPTC | ✅ | 17 categorías cubiertas |
+| 16 | Roles "Gestor" y "Lector" definidos | ✅ | Adenda lo redujo a gestor + admin |
+| 17 | Lector bloqueado en alertas | ✅ | N/A por adenda |
+| 18 | Email + nombre + apellidos + organización | ✅ | `organization` NOT NULL en T6.7 |
+| 19 | Email de verificación | ✅ | Endpoint `/auth/verify-email` |
+| 20 | Token expira a 24h | ✅ | `verification_token_expire_hours=24` |
+| 21 | Admin inicial | ✅ | Seed en `_seed_admin_user` |
+| 22 | Nubes palabras por categoría | ✅ | `/news/me/wordcloud` filtra solo noticias matcheadas (T5) |
+| 23 | Nº total noticias en stats | ✅ | `/news/me/stats` per-user (T4) |
+| 24 | Alertas por categoría | ✅ | `/alerts/me/stats` per-user, integrado en dashboard (T4) |
+| 25 | i18n ES/EN | ✅ | react-i18next |
+| 26 | API REST | ✅ | FastAPI |
+| 27 | OpenAPI documentado | ✅ | Auto FastAPI; matchea oficial tras Fase 1 |
+| 28 | GET /api/v1/health | ✅ | |
+| 29 | Almacena noticias y entidades | ✅ | Postgres |
+| 30 | Código en GitHub | ✅ | |
+| 31 | Documentación Markdown | ✅ | |
+| 32 | ADRs en `/docs/adr` | ✅ | Movido en Fase 2 (D1) |
+| 33 | Diagramas de arquitectura | ✅ | `docs/diagrams/architecture.md`, `sequence-notification.md`, `deployment.md` (D2) |
+| 34 | Pruebas automatizadas en CI | ✅ | CI corre 25 tests con cobertura (TS2 + TS3) |
+| 35 | GitHub Actions para despliegue | 🟡 | CI sí, **CD no** (CD1) |
+| 36 | Métricas calidad (SonarQube) | ❌ | (CD3) |
+| 37 | Despliegue automático máquina limpia | 🟡 | `docker compose up` lo hace; documentar (CD2) |
+| 38 | Informe cobertura automático | ✅ | `pytest-cov` integrado en CI; artefacto `backend-coverage` (TS3) |
+| 39 | Trazabilidad requisitos-código | ❌ | (D4) |
+| 40 | Registro de prompts IA | ❌ | (D5) |
 
-🔴 Crítico · 🟡 Importante · 🟢 Deseable
-
----
-
-## Tareas por persona
-
-### 🧑‍💻 100475102 — Bugs críticos del dominio + frontend tests
-
-**Por qué tú:** hiciste el P4 original de alerts y notifications. Eres quien mejor entiende ese módulo.
-
-#### B0 — Eliminar seed per-user + sources globales
-1. En `backend/app/modules/auth/service.py::register_user`, **eliminar** la llamada a `seed_default_sources_for_user(db, user.id)`.
-2. Verificar que el seed inicial en `app/main.py::_seed_rss_sources` se ejecuta una sola vez al arranque con el admin como `created_by` (ya está).
-3. En `backend/app/modules/sources/repository.py`, sustituir los filtros por `created_by == user_id` en lectura (`list`, `get_by_id`) por **lectura sin filtro**. La escritura sigue gobernada por RBAC en la capa API.
-4. Migración Alembic para **limpiar sources duplicadas** de usuarios existentes: mantener solo la copia con `created_by = admin.id` por cada (medium_name, url) y reasignar las news huérfanas a esa copia única.
-5. Test: registrar un usuario nuevo → no debe generar sources nuevas; debe ver el catálogo del admin.
-
-#### B1 — Alertas globales
-1. En `backend/app/modules/alerts/repository.py`, cambiar `list_for_user(user_id)` para que devuelva **todas** las alertas. Dejar `list_for_user` solo para uso interno si hace falta.
-2. El filtrado por rol se hace en API: lector solo lee (ya está), gestor/admin puede gestionar cualquier alerta.
-3. En `alerts/service.py`, eliminar `_ensure_sources_owned_by_user` o cambiar la lógica: las fuentes también son globales.
-4. Actualizar `AlertsPage.jsx` para mostrar un cartel "Alertas globales del sistema".
-
-#### B2 — Notificaciones para todos los lectores
-1. En `backend/app/modules/alerts/matching.py::process_alerts_for_news`:
-   - Sustituir `created_by=alert.created_by` por un bucle que cree una notificación por cada usuario activo verificado.
-   - Para email, enviar a todos los usuarios con `is_active=True` y `is_verified=True`.
-2. Añadir test: al procesar una news matching, se crea N notificaciones (N = nº usuarios).
-3. Modelo `Notification` ya tiene `created_by` que aquí pasa a ser `user_id` destinatario; verificar que el endpoint `GET /notifications` filtra por destinatario.
-
-#### B3 — News visibles para todos
-1. En `backend/app/modules/news/repository.py`, eliminar el filtro por `Source.created_by == user_id` de `list_news` y `get_by_id_for_user`.
-2. Renombrar a `list_news(skip, limit, source_id, category)` y `get_by_id(news_id)`.
-3. Actualizar `news/service.py` y `news/api.py` coherentemente.
-
-#### #8 — Smoke tests frontend
-1. Instalar vitest: `npm i -D vitest @testing-library/react @testing-library/jest-dom jsdom`.
-2. Script `"test": "vitest"` en `frontend/package.json`.
-3. 3 tests: `LoginPage` renderiza email/password, `AlertsPage` renderiza botón "Nueva alerta" solo si rol ≠ lector, `NewsPage` renderiza filtro categoría.
-
-**Entregables:** 3 PRs (uno por bug) + 1 PR frontend tests.
+**Resumen actual tras Fase 2: 36 ✅ · 2 🟡 · 2 ❌** (vs 30 ✅ · 7 🟡 · 3 ❌ antes de Fase 2; 22 ✅ · 11 🟡 · 7 ❌ antes de Fase 1).
 
 ---
 
-### 🧑‍💻 Adrian (100495924) — Tests seguros, ampliados y con cobertura
+## 🗂️ Tareas — estado y asignación
 
-**Por qué tú:** ya hiciste la infraestructura pytest en Docker (Sprint 7 P6).
+### ✅ Hechas en Fase 0 (Cristina)
 
-#### #2 — Blindaje `conftest.py`
-1. Al inicio de `backend/app/tests/conftest.py`, forzar que `DATABASE_URL` apunte a BD de test (sufijo `_test` obligatorio).
-2. Si la URL coincide con la BD de producción, `raise RuntimeError("Refusing to run tests against production DB")`.
-3. Documentar en comentario de cabecera.
+| ID | Tarea | Notas |
+|---|---|---|
+| **T1** | Eliminar rol lector | Enum, default GESTOR, frontend, migración Alembic |
+| **T6.1** | Prefijo `/api/v1` | Ya existía; verificado |
+| **T6.2** | Role como entidad | Tabla roles + user_roles + endpoints CRUD + seed admin/gestor |
+| **T7** | Atomicidad crawler | Verificado, sin cambios |
+| **T9** | Recommender 3-10 | Garantizado con fallback genérico |
+| **T10** | Límite 20 alertas/gestor | Verificado |
+| **TS1** | Blindaje `conftest.py` | Aborta si BD no contiene "test"; CI ajustado |
 
-#### #6 — Tests backend: auth, sources, alertas globales
-- `test_auth.py`: registro, login, verificación email, login con email no verificado (falla), cambio de rol admin-only, 403 para lector intentando crear alerta, campo organización obligatorio.
-- `test_sources.py`: CRUD, validación IPTC, activar/desactivar, 403 lector en escritura, **todos los roles ven todas las sources**.
-- `test_alerts_global.py`: gestor crea alerta → lector la ve (GET) pero no puede modificar (403). Lector recibe notificación cuando hay match.
+### ✅ Hechas en Fase 1 (Cristina)
 
-#### #5 — Cobertura
-1. Añadir `pytest-cov` a `requirements.txt`.
-2. Script en `backend/` para correr `pytest --cov=app --cov-report=html --cov-report=xml`.
-3. Integrar en el CI (coordinar con Javier): publicar `coverage.xml` como artefacto.
+| ID | Tarea | Notas |
+|---|---|---|
+| **T6.3** | Sources split → Category + InformationSource + RSSChannel | Migración con backfill, IDs preservados |
+| **T6.4** | Alerts oficial | descriptors, categories[], rss_channels_ids[], information_sources_ids[]; user_id; matching adaptado |
+| **T6.5** | Notifications oficial | timestamp + metrics; endpoints anidados oficiales + atajos `/users/me` |
+| **T6.6** | Stats endpoint | Módulo nuevo + tabla + CRUD oficial |
+| **T6.7** | Users oficial | organization NOT NULL + sizes 120/180 + password min 6 + CRUD `/users` |
+| **B0/B1/B2/B3** | Bugs sources/alertas/news/notif globales | Resueltos por el equipo antes de Fase 0/1 |
 
-**Entregables:** `conftest.py` blindado + 3 archivos test + cobertura integrada.
+### ✅ Hechas en Fase 2 (Cristina)
 
----
+| ID | Tarea | Notas |
+|---|---|---|
+| **T4** | Dashboard filtrado per-user | Endpoints `/news/me/stats`, `/news/me/wordcloud`, `/alerts/me/stats`. Frontend `DashboardPage` consume los `me/*` |
+| **T5** | WordCloud solo con noticias matcheadas | Implementado vía subquery `news.id IN (SELECT news_id FROM notifications WHERE user_id=:me)` |
+| **TS2** | Tests backend ampliados | `test_auth.py` (7 tests), `test_sources_split.py` (4), `test_alerts_per_user.py` (5) + helpers compartidos |
+| **TS3** | Cobertura `pytest-cov` en CI | `pytest-cov` añadido + reportes XML/HTML como artefacto en GitHub Actions |
+| **D1** | ADRs movidos a `/docs/adr` | `git mv docs/decisions docs/adr` + actualizadas referencias |
+| **D2** | Diagramas arquitectura | Mermaid en `docs/diagrams/architecture.md`, `sequence-notification.md`, `deployment.md` |
+| **D3** | Docs técnicas core | `architecture.md`, `api-design.md`, `database-design.md`, `extension-guide.md`, `testing-strategy.md` |
+| **D6** | `.env.example` raíz + backend | Plantillas con comentarios, sin secretos |
 
-### 🧑‍💻 100475101 — Crawler y lógica de alertas
+### 🔴 Pendientes Fase 3 (única que queda)
 
-**Por qué tú:** eres el "dueño" del crawler desde el Sprint 4.
+| ID | Tarea | Responsable | Detalle | Cubre check |
+|---|---|---|---|---|
+| **TS4** | Smoke tests frontend (vitest) | **100475102** | Instalar vitest + 3 tests de páginas clave | (refuerza #34) |
+| **TS5** | Tests crawler (success, error, dedup) | **100475101** | Mockear feedparser; 3 archivos test | (refuerza #34) |
+| **CD1** | Pipeline despliegue (GitHub Actions) | **Javier** | Build + push imágenes a `ghcr.io` en push a main | #35 |
+| **CD2** | Documentar despliegue máquina limpia | **Javier** | Sección en `docs/deployment.md` | #37 |
+| **CD3** | SonarCloud o métricas calidad | **Javier** | Action Sonar o `ruff/eslint` como artefactos | #36 |
+| **D4** | Trazabilidad requisitos-código | **Cristina** | Tabla en `docs/traceability.md` | #39 |
+| **D5** | Registro de prompts IA | **Cristina** | `docs/ai-prompts.md` | #40 |
 
-#### #9 — Unificar config crawler
-1. En `docker-compose.yaml` cambiar `CRAWLER_INTERVAL_SECONDS=300` → `CRAWLER_CRON_EXPRESSION=*/5 * * * *`.
-2. Eliminar referencias muertas al viejo var en todo el código.
-3. Verificar que `scheduler.py` logea la expresión cron al arrancar.
+### Tareas obsoletas
 
-#### #10 — Verificar recommender
-1. Abrir `backend/app/modules/alerts/recommender.py`.
-2. Garantizar que `suggest_expanded_keywords(keyword)` **siempre** devuelve entre 3 y 10 términos (el profesor lo exige en la checklist #2).
-3. Añadir test unitario con 5 keywords distintas.
+#### Absorbidas por Fase 1
 
-#### #11 — Verificar límite 20 alertas/gestor
-1. En `alerts/service.py::create_alert` ya existe `MAX_ALERTS_PER_USER`. Verificar que vale 20 y es por **gestor**, no por usuario global.
-2. Tras el fix de B1 (alertas globales), replantear: ¿cuenta por gestor creador o total del sistema? El enunciado dice "por gestor".
-3. Añadir test.
-
-#### #7 — Tests crawler
-1. `test_crawler_success.py`: feed mockeado con 3 noticias → 3 `News` creadas.
-2. `test_crawler_errors.py`: feed HTTP 500, malformado, vacío → no rompe.
-3. `test_crawler_dedup.py`: mismo feed dos veces → sin duplicados.
-
-**Entregables:** docker-compose actualizado + recommender verificado + límite verificado + 3 archivos test.
-
----
-
-### 🧑‍💻 Cristina (100475144) — Documentación, trazabilidad y extras de registro
-
-**Por qué yo:** tengo visión global del sistema por haber tocado auth, alerts, sources, notifications, seed.
-
-#### #1 — `.env.example`
-- `.env.example` en raíz (variables del docker-compose).
-- `backend/.env.example` (JWT, SMTP, admin seed, crawler cron).
-- Comentario por variable.
-
-#### #12 — Campo organización en registro
-- Checklist del profesor #18: registro pide **email, nombre, apellidos y organización**. Actualmente no hay "organización".
-- Añadir columna `organization` a `User`, migración Alembic, schema `UserCreate`, formulario frontend `RegisterPage`.
-
-#### #13 — Docs técnicas faltantes
-Crear en `docs/`:
-- `architecture.md` — módulos, flujo RSS→crawler→news→matching→notif, decisiones clave.
-- `api-design.md` — endpoints por módulo, formatos, auth requerida.
-- `database-design.md` — ER, tablas, FKs, estrategia migraciones.
-- `extension-guide.md` — "cómo añadir módulo / canal / categoría IPTC".
-- `testing-strategy.md` — niveles de test, comandos, entorno aislado.
-
-#### #14 — Mover ADRs
-- Renombrar `docs/decisions/` → `docs/adr/` (checklist #32 exige `/docs/adr`).
-- Actualizar referencias en `docs/README.md`.
-
-#### #15 — Diagramas
-- `docs/diagrams/architecture.png` — diagrama de bloques.
-- `docs/diagrams/sequence-notification.png` — flujo de alerta→notificación.
-- `docs/diagrams/deployment.png` — arquitectura física (Docker Compose).
-- Usar draw.io / PlantUML / Mermaid. Exportar PNG + fuente.
-
-#### #16 — Trazabilidad
-- `docs/traceability.md`: tabla de 3 columnas — Requisito (enunciado) / Historia de Usuario / Archivo(s) de código / Test(s).
-
-#### #17 — Registro prompts IA
-- `docs/ai-prompts.md`: lista de prompts clave usados con Claude/otros, con fecha y propósito. Checklist #40 lo exige.
-
-**Entregables:** 2 `.env.example` + campo organización + 5 docs + 3 diagramas + trazabilidad + prompts.
+| ID original | Por qué ya no aplica |
+|---|---|
+| T2 (revertir alertas a per-user) | Absorbida en T6.4 |
+| T3 (revertir notificaciones a creador) | Absorbida en T6.5 |
+| T8 (organization obligatoria) | Absorbida en T6.7 |
+| T21 (ocultar acciones a lector) | El rol lector se eliminó (CAMBIO #1) |
+| T22 (script demo reproducible) | Ya existe `docs/demo.md` |
 
 ---
 
-### 🧑‍💻 Manso (100474286) — Frontend UX y dashboard
+## 🔧 Mapa final de endpoints alineados con la API oficial
 
-**Por qué tú:** ya hiciste fixes UI y conoces el frontend.
+### Endpoints oficiales (idénticos a `main.py` del aula global)
 
-#### #18 — Nubes de palabras por categoría (checklist #22)
-- En `DashboardPage.jsx` añadir nube de palabras por categoría IPTC.
-- Librería sugerida: `react-wordcloud` o `@visx/wordcloud`.
-- Endpoint auxiliar backend si hace falta: `GET /news/wordcloud?category=X` devuelve top 50 palabras por frecuencia.
+```
+POST   /api/v1/auth/login
+POST   /api/v1/auth/register
+GET    /api/v1/health
 
-#### #19 — Estadísticas globales (checklist #23, #24)
-- Total de noticias del sistema.
-- Alertas desglosadas por categoría (gráfico barras).
-- Librería sugerida: `recharts` (ligera y React-first).
+GET    /api/v1/users                                 (lista)
+POST   /api/v1/users                                 (admin only, 201)
+GET    /api/v1/users/{user_id}
+PUT    /api/v1/users/{user_id}
+DELETE /api/v1/users/{user_id}                       (204)
 
-#### #20 — i18n ES/EN (checklist #25)
-- Instalar `react-i18next`.
-- Traducir literales de: sidebar, dashboard, alerts, sources, news, notifications, login, register.
-- Toggle de idioma en la sidebar (banderitas o dropdown).
+GET/POST/GET/PUT/DELETE  /api/v1/roles[/{id}]
+GET/POST/GET/PUT/DELETE  /api/v1/categories[/{id}]
+GET/POST/GET/PUT/DELETE  /api/v1/information-sources[/{id}]
+GET/POST/GET/PUT/DELETE  /api/v1/information-sources/{id}/rss-channels[/{cid}]
 
-#### #21 — Ocultar acciones al lector
-- Leer rol del contexto de auth.
-- En `AlertsPage`, `SourcesPage`: si `role === 'lector'`, ocultar botones Crear / Editar / Eliminar.
-- Mostrar badge del rol en sidebar (ya parcialmente hecho).
+GET/POST/GET/PUT/DELETE  /api/v1/users/{user_id}/alerts[/{alert_id}]
+GET/POST/GET/PUT/DELETE  /api/v1/users/{user_id}/alerts/{alert_id}/notifications[/{nid}]
 
-**Entregables:** dashboard completo + i18n + UX condicionada.
+GET/POST/GET/PUT/DELETE  /api/v1/stats[/{id}]
+```
 
----
+### Endpoints añadidos sobre el contrato (permitido por el profesor)
 
-### 🧑‍💻 Javier Martín — CI/CD, demo y calidad
-
-**Por qué tú:** PRs transversales, visión conjunta del proyecto.
-
-#### #3 — CI GitHub Actions
-Crear `.github/workflows/ci.yml` con jobs:
-1. **backend-test**: Postgres de servicio + `pytest --cov=app --cov-report=xml`.
-2. **backend-lint**: `ruff check backend/app/`.
-3. **frontend-build**: `npm ci && npm run build`.
-4. **frontend-test**: `npm test` (depende de que 100475102 merge vitest antes).
-
-Trigger: push a `main`, PRs.
-
-#### #4 — Despliegue automático (CD)
-- Job adicional en el workflow: en push a `main` tras CI verde, build de imágenes Docker y publicación a `ghcr.io`.
-- Opcional: deployment a máquina limpia documentado en `docs/deployment.md` con `docker compose pull && up -d`.
-
-#### #23 — SonarQube / calidad
-- Action `SonarCloud` o al menos generar `pylint`/`ruff` + `eslint` como artefactos del CI.
-- Subir `coverage.xml` a SonarCloud o mostrarlo como badge en el README.
-
-#### #22 — Script de demo
-`docs/demo.md` checklist:
-1. `docker compose up --build`.
-2. Login `admin@newsradar.com`.
-3. Crear fuente RSS.
-4. Gestor crea alerta con categoría IPTC + keyword.
-5. Esperar al crawler (o forzar endpoint).
-6. Verificar notificación en buzón del **lector** (no solo del gestor).
-7. Verificar email en MailHog (http://localhost:8025).
-
-Opcional: `scripts/demo.sh` automatizado por API.
-
-**Entregables:** `ci.yml` verde + CD + métricas calidad + `demo.md`.
+```
+GET    /api/v1/users/me/alerts                       (atajo)
+POST   /api/v1/users/me/alerts                       (atajo)
+GET    /api/v1/users/me/notifications                (bandeja UI)
+GET    /api/v1/users/me/notifications/{id}/details
+PATCH  /api/v1/users/me/notifications/{id}/read|unread
+DELETE /api/v1/users/me/notifications/{id}
+PATCH  /api/v1/users/{u}/alerts/{a}/activate|deactivate
+PATCH  /api/v1/information-sources/{s}/rss-channels/{c}/activate|deactivate
+GET    /api/v1/alerts/categories                     (lista IPTC)
+GET    /api/v1/alerts/suggestions/{keyword}          (recommender 3-10)
+GET    /api/v1/alerts/me/stats                       (dashboard per-user)
+GET    /api/v1/information-sources/catalog/summary   (checklist #13-15)
+GET    /api/v1/news/...                              (no oficial, permitido)
+GET    /api/v1/auth/verify-email
+POST   /api/v1/auth/resend-verification
+GET    /api/v1/auth/users
+PATCH  /api/v1/auth/users/{id}/role                  (CAMBIO #1)
+GET    /api/v1/health/db
+```
 
 ---
 
-## Orden de merge recomendado
+## 🗄️ Migraciones Alembic aplicadas (en orden)
 
-Para evitar bloqueos por dependencias:
+1. `f1a2b3c4d5e6` — Roles entity + remove lector (Fase 0)
+2. `f2b3c4d5e6f7` — Split sources → categories + information_sources + rss_channels (T6.3)
+3. `f3c4d5e6f7a8` — Align alerts with official API (T6.4)
+4. `f4d5e6f7a8b9` — Align notifications with official API (T6.5)
+5. `f5e6f7a8b9c0` — Create stats table (T6.6)
+6. `f6f7a8b9c0d1` — Align users with official API (T6.7)
 
-### Semana 1 (en paralelo)
-- 100475102 → **B0 primero** (migración de limpieza), luego **B1, B2, B3** (bugs críticos, base para todo)
-- Adrian → #2 (blindaje conftest)
-- 100475101 → #9 (config crawler)
-- Cristina → #1, #12 (env + organización)
-
-### Semana 2 (tras bugs mergeados)
-- Adrian → #6 (tests incluyen los nuevos comportamientos globales)
-- 100475101 → #7, #10, #11
-- 100475102 → #8 (vitest)
-- Cristina → #13, #14, #15, #16, #17 (docs)
-- Manso → #18, #19, #20, #21
-
-### Semana 3 (tras tests frontend y backend)
-- Javier → #3, #4, #22, #23 (CI puede correr todos los tests ya existentes)
-- Adrian → #5 (cobertura integrada al CI ya creado)
+Verificado: arrancando Docker desde cero las 6 migraciones aplican limpio, se siembran 110 canales en 20 medios y los 9/9 tests pasan contra `newsradar_test`.
 
 ---
 
-## Reglas de trabajo
+## 📅 Orden de merge sugerido para cerrar el proyecto
 
-- Una rama por persona y tarea: `feature/<nombre>-<tema>` (ej. `feature/adrian-conftest-blindaje`).
-- PR a `main` con descripción clara y checklist marcado.
+### ✅ Sprint A — Fase 2 (cerrada en `feature/phase2-cristina`)
+- T4, T5, TS2, TS3, D1, D2, D3, D6 — todo merged en una sola rama.
+
+### Sprint B — Fase 3 (~2-3 días, en paralelo)
+- **100475102** → TS4 (vitest frontend)
+- **100475101** → TS5 (tests crawler)
+- **Javier** → CD1, CD2, CD3 (CD pipeline + deployment doc + Sonar)
+- **Cristina** → D4, D5 (trazabilidad, prompts IA)
+
+### Sprint C — Cierre (1 día)
+- Smoke test conjunto: `docker compose up --build` desde rama main, recorrer `docs/demo.md`.
+- Verificar 40/40 checks del checklist del profesor.
+- Crear release tag.
+
+---
+
+## 📐 Reglas de trabajo
+
+- Una rama por persona-tarea: `feature/<nombre>-<id>` (ej. `feature/manso-T4-dashboard-per-user`).
+- PR a `main` con descripción: tarea cerrada, checklist del profesor cubierto, captura/curl de verificación.
 - Review mínima de 1 compañero antes de mergear.
+- Cada commit con tu cuenta de la uni (Phase 0 ya configuró el local).
 - No push directo a `main`.
-- Si un PR bloquea a otro, avisar por el grupo.
-- Cada commit con tu cuenta de la uni (ya configurado).
 
 ---
 
-## Estado final esperado
+## 📌 Estado final esperado (cuando se cierre Sprint C)
 
-Tras completar este reparto, el proyecto cumplirá:
-- ✅ 40/40 checks del `DOSS-CHECKLIST_2026` (checklist del profesor)
-- ✅ 26/26 checks de proceso general
-- ✅ 3 bugs críticos resueltos
-- ✅ Sprints 0–8 completados del ROADMAP
-- ✅ Entrega final lista
-
----
-
-## Issue pendiente del compañero
-
-El compañero abrirá una **issue en GitHub** con capturas del fallo: un usuario nuevo no ve las noticias antiguas del admin, pero sí ve las que se parsean después de su registro.
-
-**Causa raíz ya identificada (B0)**: al registrarse cada usuario, `auth/service.py::register_user` ejecuta `seed_default_sources_for_user` que le clona las 104 fuentes RSS con `created_by = nuevo_user`. Como `news/repository.py` filtra news por `Source.created_by == user_id`, cada usuario solo ve las news de sus copias de sources. El crawler parsea todas las copias, por eso las news nuevas sí aparecen (ligadas a las copias del nuevo user) pero las antiguas no (ligadas a las copias del admin).
-
-Ese issue queda cubierto por las tareas **B0 + B3** combinadas. Cuando se mergeen los fixes, cerrar el issue referenciándolo desde el PR.
+- 40/40 checks del `DOSS-CHECKLIST_2026` ✅
+- 26/26 checks de proceso general ✅
+- API matchea exactamente la oficial del aula global ✅
+- CI + CD verde ✅
+- Cobertura > 60% ✅
+- Documentación completa (ADRs, diagramas, traceability, prompts IA) ✅
+- Demo reproducible documentada ✅
