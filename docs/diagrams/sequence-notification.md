@@ -39,7 +39,7 @@ sequenceDiagram
     Note over UI,DB: Más tarde, el usuario abre la app
     UI->>DB: GET /api/v1/users/me/notifications
     DB-->>UI: lista (NotificationDetailResponse)
-    UI->>DB: PATCH /notifications/{id}/read
+    UI->>DB: PATCH /notifications/:id/read
 ```
 
 ## Reglas clave

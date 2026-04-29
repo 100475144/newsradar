@@ -18,22 +18,22 @@ flowchart TB
     subgraph BE["Backend (FastAPI / api/v1)"]
         direction TB
         subgraph Auth["auth"]
-            AuthAPI[(api / users_api / roles_api)]
+            AuthAPI["api / users_api / roles_api"]
             AuthService[service]
             AuthRepo[repository]
         end
         subgraph Sources["sources"]
-            SrcAPI[(categories + information-sources + rss-channels)]
+            SrcAPI["categories + information-sources + rss-channels"]
             SrcModels[models]
         end
         subgraph Alerts["alerts"]
-            AlertsAPI[(/users/{id}/alerts)]
+            AlertsAPI["/users/:id/alerts"]
             AlertsSvc[service]
             AlertsMatch[matching]
             AlertsRecom[recommender]
         end
         subgraph Notifs["notifications"]
-            NotifAPI[(anidada + /users/me)]
+            NotifAPI["nested + /users/me"]
             NotifSvc[service]
             NotifEmail[email_utils]
         end
@@ -42,17 +42,17 @@ flowchart TB
             Sched[APScheduler cron]
         end
         subgraph News["news"]
-            NewsAPI[(/news + /news/me)]
+            NewsAPI["/news + /news/me"]
             NewsSvc[service]
         end
         subgraph Stats["stats"]
-            StatsAPI[(/stats CRUD)]
+            StatsAPI["/stats CRUD"]
         end
     end
 
-    DB[(PostgreSQL 16)]
-    Mail[(MailHog SMTP)]
-    Feeds[(Feeds RSS externos)]
+    DB[("PostgreSQL 18")]
+    Mail[("MailHog SMTP")]
+    Feeds[("Feeds RSS externos")]
 
     FE -->|HTTP /api/v1| BE
 
@@ -85,3 +85,7 @@ flowchart TB
 - **Notifications** expone los endpoints anidados oficiales más atajos
   `/users/me/notifications` para la UI.
 - **Stats** sigue el contrato oficial (snapshots `{metrics: List[Metric]}`).
+
+> Nota Mermaid: las URL con parámetros se escriben con `:id` en lugar de `{id}`
+> porque las llaves chocan con la gramática del parser de GitHub. Conceptualmente
+> son los mismos paths anidados oficiales (`/users/{id}/alerts`).
