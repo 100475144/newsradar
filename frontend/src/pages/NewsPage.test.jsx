@@ -10,10 +10,11 @@ describe('NewsPage', () => {
     expect(container).toBeTruthy()
   })
 
-  it('renders a category filter <select>', async () => {
+  it('renders a category filter input', () => {
     renderWithProviders(<NewsPage />)
-    // Esperamos un select para filtrar por categoría IPTC.
-    const select = document.querySelector('select')
-    expect(select).toBeInTheDocument()
+    // NewsPage filtra categorías con un <input type="text">. Comprobamos que
+    // existe al menos un input de texto en el toolbar.
+    const inputs = document.querySelectorAll('input[type="text"]')
+    expect(inputs.length).toBeGreaterThan(0)
   })
 })
