@@ -254,7 +254,13 @@ def test_crawl_does_not_create_duplicates_on_repeat(db):
 
 
 def test_crawl_all_active_sources_iterates_active_only(db):
-    """``crawl_all_active_sources`` solo procesa channels con is_active=True."""
+    """``crawl_all_active_sources`` solo procesa channels con is_active=True.
+
+    Nota sobre aislamiento: otros tests de la misma sesión pueden haber
+    sembrado canales (con ``commit`` dentro de la sesión transaccional).
+    El test comprueba pertenencia (el activo está, el inactivo no), no
+    longitud exacta de la lista de resultados.
+    """
     create_test_user(db, email="crawler-active@example.com")
     cat, medium, active_channel = _ensure_seed_entities(db)
 
@@ -277,6 +283,6 @@ def test_crawl_all_active_sources_iterates_active_only(db):
     with patch("app.modules.crawler.service.feedparser.parse", return_value=fake_feed):
         results = service.crawl_all_active_sources()
 
-    # Solo el activo se procesa.
-    assert len(results) == 1
-    assert results[0].source_id == active_channel.id
+    result_ids = {r.source_id for r in results}
+    assert active_channel.id in result_ids
+    assert inactive_channel.id not in result_ids
