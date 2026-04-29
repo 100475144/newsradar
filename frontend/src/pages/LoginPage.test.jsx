@@ -9,7 +9,6 @@ describe('LoginPage', () => {
   it('renders the email and password inputs', () => {
     renderWithProviders(<LoginPage />)
 
-    // Hay al menos un input email y uno password.
     const emailInput = document.querySelector('input[type="email"]')
     const passwordInput = document.querySelector('input[type="password"]')
     expect(emailInput).toBeInTheDocument()
@@ -22,11 +21,12 @@ describe('LoginPage', () => {
     expect(submitButton).toBeInTheDocument()
   })
 
-  it('uses the i18n key for the page title', () => {
+  it('uses i18n keys for visible texts', () => {
     renderWithProviders(<LoginPage />)
-    // Con el mock de i18n, t("login.title") devuelve la propia key.
-    // Tolera que el componente use otras keys: comprobamos que la página
-    // monta sin errores buscando un elemento con clase de hero.
-    expect(screen.queryByText(/login\./i)).toBeTruthy()
+    // Con el mock de i18n, t("…") devuelve la propia key, así que debe haber
+    // varios textos que empiezan por "login.". Usamos queryAllByText (varios
+    // matches son esperables) y comprobamos que hay al menos uno.
+    const matches = screen.queryAllByText(/^login\./i)
+    expect(matches.length).toBeGreaterThan(0)
   })
 })
