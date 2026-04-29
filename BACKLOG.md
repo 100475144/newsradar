@@ -1,3 +1,40 @@
+# Backlog del proyecto — NEWSRADAR
+
+> ⚠️ **Documento histórico.** Este archivo recoge el **plan inicial paso a paso** que se siguió al arrancar el proyecto, incluyendo el reparto persona-tarea por sprint. **No refleja el estado actual.**
+>
+> Para el estado vivo del proyecto y las tareas en curso, consulta:
+> - [`docs/REPARTO_FINAL.md`](docs/REPARTO_FINAL.md) — qué falta y quién lo hace
+> - [`ROADMAP.md`](ROADMAP.md) — sprints y fases (visión alta)
+> - [`docs/traceability.md`](docs/traceability.md) — checklist completo del profesor con evidencia
+
+---
+
+## Resumen ejecutivo (a 30 de abril de 2026)
+
+| Sprint del backlog | Estado |
+|---|---|
+| Sprint 0 — Infraestructura | ✅ Completado |
+| Sprint 1 — Auth y usuarios | ✅ Completado |
+| Sprint 2 — Sources | ✅ Completado |
+| Sprint 3 — Alerts | ✅ Completado |
+| Sprint 4 — Crawler / News | ✅ Completado |
+| Sprint 5 — Notifications + matching | ✅ Completado |
+| Sprint 6 — Dashboard | ✅ Completado |
+| Sprint 7 — Testing + CI | 🟡 Parcial — CD pipeline y SonarQube pendientes (asignados a Javier) |
+| Sprint 8 — Documentación | ✅ Completado |
+
+Tras los sprints originales se ejecutaron **4 fases de cierre adicionales** (Fase 0, 1, 2, 3) en respuesta a las **adendas oficiales** publicadas por el profesor a mitad del proyecto. El detalle de esas fases vive en `ROADMAP.md` y `docs/REPARTO_FINAL.md`.
+
+**Cumplimiento checklist del profesor:** 38/40 ✅ (los 2 ❌ pendientes son CD pipeline y SonarQube, ambos asignados a Javier).
+
+---
+
+## Cómo leer el resto de este documento
+
+A continuación está el **plan original sprint por sprint**, con orden exacto de pasos y reparto persona por persona. Sirve como histórico y para entender la lógica de la planificación inicial. Las desviaciones respecto a este plan (causadas por las adendas oficiales) están documentadas en `ROADMAP.md` § "Fases de cierre".
+
+---
+
 # SPRINT 0 — Preparación de infraestructura
 
 ## Objetivo real
