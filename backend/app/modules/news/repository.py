@@ -89,11 +89,64 @@ class NewsRepository:
         rows = self.db.execute(stmt).all()
         return [{"category": r.category, "count": r.count} for r in rows]
 
+    # ── Per-user (CAMBIO #2) ─────────────────────────────────────────
+
+    def _user_news_subquery(self, user_id: int):
+        """Subquery with the IDs of news that have at least one notification
+        for the given user. Esto se usa como base de stats/wordcloud per-user
+        (CAMBIO #2: dashboards solo con datos del usuario logueado)."""
+        from app.modules.notifications.models import Notification
+
+        return (
+            select(Notification.news_id)
+            .where(Notification.user_id == user_id)
+            .distinct()
+        )
+
+    def count_total_for_user(self, user_id: int) -> int:
+        subq = self._user_news_subquery(user_id).subquery()
+        stmt = select(func.count(News.id)).where(News.id.in_(select(subq.c.news_id)))
+        return int(self.db.execute(stmt).scalar_one())
+
+    def count_by_category_for_user(self, user_id: int) -> list[dict]:
+        subq = self._user_news_subquery(user_id).subquery()
+        stmt = (
+            select(News.category, func.count(News.id).label("count"))
+            .where(
+                News.category.isnot(None),
+                News.id.in_(select(subq.c.news_id)),
+            )
+            .group_by(News.category)
+            .order_by(func.count(News.id).desc())
+        )
+        rows = self.db.execute(stmt).all()
+        return [{"category": r.category, "count": r.count} for r in rows]
+
+    def word_frequencies_for_user(
+        self,
+        user_id: int,
+        category: str | None = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        subq = self._user_news_subquery(user_id).subquery()
+        stmt = select(News.title).where(
+            News.title.isnot(None),
+            News.id.in_(select(subq.c.news_id)),
+        )
+        if category:
+            stmt = stmt.where(News.category == category)
+        titles = [row[0] for row in self.db.execute(stmt).all()]
+        return self._compute_word_frequencies(titles, limit)
+
     def word_frequencies(self, category: str | None = None, limit: int = 50) -> list[dict]:
         stmt = select(News.title).where(News.title.isnot(None))
         if category:
             stmt = stmt.where(News.category == category)
         titles = [row[0] for row in self.db.execute(stmt).all()]
+        return self._compute_word_frequencies(titles, limit)
+
+    @staticmethod
+    def _compute_word_frequencies(titles: list[str], limit: int) -> list[dict]:
 
         freq: dict[str, int] = {}
         stop = {

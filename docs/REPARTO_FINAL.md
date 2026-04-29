@@ -1,6 +1,6 @@
 # Reparto de tareas finales — NEWSRADAR
 
-**Última actualización:** 30 abril 2026 (tras cerrar Fase 1 completa).
+**Última actualización:** 30 abril 2026 (tras cerrar Fase 2 completa).
 
 Este documento se cruza con:
 - `DOSS-CHECKLIST_2026` (40 checks de proyecto + 26 de proceso)
@@ -19,8 +19,8 @@ Cada persona trabaja en `feature/<nombre>-<tema>` y abre PR a `main` con review 
 |---|---|---|
 | **Fase 0** | Infra base + cumplir adenda CAMBIO #1/#1bis + verificaciones | ✅ Cerrada (rama `feature/phase0-cristina`) |
 | **Fase 1** | Refactor masivo para alinear API con `main.py` oficial (CAMBIO #3) | ✅ Cerrada (rama `feature/phase1-cristina-t6.3-t6.4`) |
-| **Fase 2** | Dashboard per-user + tests + documentación + UX residual | 🟡 Pendiente |
-| **Fase 3** | Tests frontend + CI/CD ampliado + cobertura + Sonar + demo | 🔴 Pendiente |
+| **Fase 2** | Dashboard per-user + tests ampliados + cobertura + documentación + ADRs + diagramas + .env.example | ✅ Cerrada (rama `feature/phase2-cristina`) |
+| **Fase 3** | Tests frontend + CD + Sonar + traceability + prompts IA | 🔴 Pendiente |
 
 ---
 
@@ -79,9 +79,9 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ pendiente
 | 19 | Email de verificación | ✅ | Endpoint `/auth/verify-email` |
 | 20 | Token expira a 24h | ✅ | `verification_token_expire_hours=24` |
 | 21 | Admin inicial | ✅ | Seed en `_seed_admin_user` |
-| 22 | Nubes palabras por categoría | 🟡 | UI ya tiene WordCloud, falta filtrar por user logueado (CAMBIO #2 → T5) |
-| 23 | Nº total noticias en stats | 🟡 | Existe en dashboard, falta filtrar per-user (T4) |
-| 24 | Alertas por categoría | 🟡 | `/alerts/me/stats` ya per-user; falta integrarlo en dashboard (T4) |
+| 22 | Nubes palabras por categoría | ✅ | `/news/me/wordcloud` filtra solo noticias matcheadas (T5) |
+| 23 | Nº total noticias en stats | ✅ | `/news/me/stats` per-user (T4) |
+| 24 | Alertas por categoría | ✅ | `/alerts/me/stats` per-user, integrado en dashboard (T4) |
 | 25 | i18n ES/EN | ✅ | react-i18next |
 | 26 | API REST | ✅ | FastAPI |
 | 27 | OpenAPI documentado | ✅ | Auto FastAPI; matchea oficial tras Fase 1 |
@@ -89,17 +89,17 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ pendiente
 | 29 | Almacena noticias y entidades | ✅ | Postgres |
 | 30 | Código en GitHub | ✅ | |
 | 31 | Documentación Markdown | ✅ | |
-| 32 | ADRs en `/docs/adr` | ❌ | Siguen en `/docs/decisions` (D1) |
-| 33 | Diagramas de arquitectura | ❌ | No existen `docs/diagrams/` (D2) |
-| 34 | Pruebas automatizadas en CI | 🟡 | CI corre 9 tests; faltan más (TS2/TS5) |
+| 32 | ADRs en `/docs/adr` | ✅ | Movido en Fase 2 (D1) |
+| 33 | Diagramas de arquitectura | ✅ | `docs/diagrams/architecture.md`, `sequence-notification.md`, `deployment.md` (D2) |
+| 34 | Pruebas automatizadas en CI | ✅ | CI corre 25 tests con cobertura (TS2 + TS3) |
 | 35 | GitHub Actions para despliegue | 🟡 | CI sí, **CD no** (CD1) |
 | 36 | Métricas calidad (SonarQube) | ❌ | (CD3) |
 | 37 | Despliegue automático máquina limpia | 🟡 | `docker compose up` lo hace; documentar (CD2) |
-| 38 | Informe cobertura automático | ❌ | `pytest-cov` no integrado (TS3) |
+| 38 | Informe cobertura automático | ✅ | `pytest-cov` integrado en CI; artefacto `backend-coverage` (TS3) |
 | 39 | Trazabilidad requisitos-código | ❌ | (D4) |
 | 40 | Registro de prompts IA | ❌ | (D5) |
 
-**Resumen actual: 30 ✅ · 7 🟡 · 3 ❌** (vs 22 ✅ · 11 🟡 · 7 ❌ antes de Fase 1).
+**Resumen actual tras Fase 2: 36 ✅ · 2 🟡 · 2 ❌** (vs 30 ✅ · 7 🟡 · 3 ❌ antes de Fase 2; 22 ✅ · 11 🟡 · 7 ❌ antes de Fase 1).
 
 ---
 
@@ -128,32 +128,34 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ pendiente
 | **T6.7** | Users oficial | organization NOT NULL + sizes 120/180 + password min 6 + CRUD `/users` |
 | **B0/B1/B2/B3** | Bugs sources/alertas/news/notif globales | Resueltos por el equipo antes de Fase 0/1 |
 
-### 🟡 Pendientes Fase 2 (asignaciones por persona)
+### ✅ Hechas en Fase 2 (Cristina)
 
-| ID | Tarea | Responsable | Detalle |
-|---|---|---|---|
-| **T4** | Dashboard filtrado por user logueado | **Manso** | Stats, total noticias y alertas por categoría usando `/alerts/me/stats` y filtrando news por las alertas del user |
-| **T5** | WordCloud solo con noticias matcheadas del user | **Manso** | Backend ya tiene la info; mover el endpoint a un cálculo per-user |
-| **TS2** | Tests backend ampliados | **Adrian** | `test_auth.py`, `test_sources_split.py`, `test_alerts_per_user.py` |
-| **TS3** | Cobertura `pytest-cov` integrada en CI | **Adrian** | Subir `coverage.xml` artefacto + badge README |
-| **D1** | Mover ADRs a `/docs/adr` | **Cristina** | `git mv docs/decisions docs/adr` + actualizar referencias |
-| **D2** | Diagramas arquitectura (bloques + secuencia + despliegue) | **Cristina** | PNG + fuente PlantUML/Mermaid |
-| **D3** | `architecture.md`, `api-design.md`, `database-design.md`, `extension-guide.md`, `testing-strategy.md` | **Cristina** | Documentación técnica core |
-| **D6** | `.env.example` raíz + backend | **Cristina** | Variables de entorno con comentarios |
+| ID | Tarea | Notas |
+|---|---|---|
+| **T4** | Dashboard filtrado per-user | Endpoints `/news/me/stats`, `/news/me/wordcloud`, `/alerts/me/stats`. Frontend `DashboardPage` consume los `me/*` |
+| **T5** | WordCloud solo con noticias matcheadas | Implementado vía subquery `news.id IN (SELECT news_id FROM notifications WHERE user_id=:me)` |
+| **TS2** | Tests backend ampliados | `test_auth.py` (7 tests), `test_sources_split.py` (4), `test_alerts_per_user.py` (5) + helpers compartidos |
+| **TS3** | Cobertura `pytest-cov` en CI | `pytest-cov` añadido + reportes XML/HTML como artefacto en GitHub Actions |
+| **D1** | ADRs movidos a `/docs/adr` | `git mv docs/decisions docs/adr` + actualizadas referencias |
+| **D2** | Diagramas arquitectura | Mermaid en `docs/diagrams/architecture.md`, `sequence-notification.md`, `deployment.md` |
+| **D3** | Docs técnicas core | `architecture.md`, `api-design.md`, `database-design.md`, `extension-guide.md`, `testing-strategy.md` |
+| **D6** | `.env.example` raíz + backend | Plantillas con comentarios, sin secretos |
 
-### 🔴 Pendientes Fase 3
+### 🔴 Pendientes Fase 3 (única que queda)
 
-| ID | Tarea | Responsable | Detalle |
-|---|---|---|---|
-| **TS4** | Smoke tests frontend (vitest) | **100475102** | Instalar vitest + 3 tests de páginas clave |
-| **TS5** | Tests crawler (success, error, dedup) | **100475101** | Mockear feedparser; 3 archivos test |
-| **CD1** | Pipeline despliegue (GitHub Actions) | **Javier** | Build + push imágenes a `ghcr.io` en push a main |
-| **CD2** | Documentar despliegue máquina limpia | **Javier** | Sección en `docs/deployment.md` |
-| **CD3** | SonarCloud o métricas calidad | **Javier** | Action Sonar o `ruff/eslint` como artefactos |
-| **D4** | Trazabilidad requisitos-código | **Cristina** | Tabla en `docs/traceability.md` |
-| **D5** | Registro de prompts IA | **Cristina** | `docs/ai-prompts.md` |
+| ID | Tarea | Responsable | Detalle | Cubre check |
+|---|---|---|---|---|
+| **TS4** | Smoke tests frontend (vitest) | **100475102** | Instalar vitest + 3 tests de páginas clave | (refuerza #34) |
+| **TS5** | Tests crawler (success, error, dedup) | **100475101** | Mockear feedparser; 3 archivos test | (refuerza #34) |
+| **CD1** | Pipeline despliegue (GitHub Actions) | **Javier** | Build + push imágenes a `ghcr.io` en push a main | #35 |
+| **CD2** | Documentar despliegue máquina limpia | **Javier** | Sección en `docs/deployment.md` | #37 |
+| **CD3** | SonarCloud o métricas calidad | **Javier** | Action Sonar o `ruff/eslint` como artefactos | #36 |
+| **D4** | Trazabilidad requisitos-código | **Cristina** | Tabla en `docs/traceability.md` | #39 |
+| **D5** | Registro de prompts IA | **Cristina** | `docs/ai-prompts.md` | #40 |
 
-### Tareas obsoletas (absorbidas por Fase 1)
+### Tareas obsoletas
+
+#### Absorbidas por Fase 1
 
 | ID original | Por qué ya no aplica |
 |---|---|
@@ -231,12 +233,10 @@ Verificado: arrancando Docker desde cero las 6 migraciones aplican limpio, se si
 
 ## 📅 Orden de merge sugerido para cerrar el proyecto
 
-### Sprint A — Fase 2 (en paralelo, ~2-3 días)
-- **Manso** → T4, T5 (dashboard filtrado per-user, wordcloud per-user)
-- **Adrian** → TS2, TS3 (tests backend ampliados + cobertura en CI)
-- **Cristina** → D1, D2, D3, D6 (mover ADRs, diagramas, docs técnicas, .env.example)
+### ✅ Sprint A — Fase 2 (cerrada en `feature/phase2-cristina`)
+- T4, T5, TS2, TS3, D1, D2, D3, D6 — todo merged en una sola rama.
 
-### Sprint B — Fase 3 (depende de A, ~2-3 días)
+### Sprint B — Fase 3 (~2-3 días, en paralelo)
 - **100475102** → TS4 (vitest frontend)
 - **100475101** → TS5 (tests crawler)
 - **Javier** → CD1, CD2, CD3 (CD pipeline + deployment doc + Sonar)

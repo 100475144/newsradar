@@ -45,9 +45,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Run backend tests
+      - name: Run backend tests with coverage
         working-directory: backend
-        run: pytest app/tests -q
+        run: |
+          pytest app/tests -q \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:coverage_html
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: |
+            backend/coverage.xml
+            backend/coverage_html
+          retention-days: 14
 
   backend-lint:
     runs-on: ubuntu-latest

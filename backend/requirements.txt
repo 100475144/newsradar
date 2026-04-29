@@ -9,6 +9,7 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.20
 httpx
 pytest
+pytest-cov
 bcrypt==4.0.1
 alembic==1.18.4
 python-dotenv==1.2.2

@@ -13,9 +13,12 @@ def test_default_catalog_summary_meets_source_checklist():
 
 
 def test_seed_populates_split_tables(db):
-    """Tras T6.3, el seed crea Category, InformationSource y RSSChannel."""
-    inserted = seed_default_sources(db)
-    assert inserted >= 100
+    """Tras T6.3, el seed crea Category, InformationSource y RSSChannel.
+
+    El seed es idempotente: ``inserted`` puede ser 0 si otro test previo de la
+    misma sesión ya pobló las tablas. Lo que verificamos es el estado final.
+    """
+    seed_default_sources(db)
 
     channels = db.query(RSSChannel).all()
     assert len(channels) >= 100
