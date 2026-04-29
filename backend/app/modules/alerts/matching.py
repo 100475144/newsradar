@@ -12,7 +12,7 @@ Adaptado al schema oficial (T6.4):
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from app.modules.alerts.models import Alert
 from app.modules.news.models import News
 from app.modules.notifications.email_utils import send_email_notification
 from app.modules.notifications.repository import NotificationRepository
+from app.modules.notifications.service import build_default_metrics
 from app.modules.sources.models import Category, RSSChannel
 
 
@@ -218,6 +219,12 @@ def process_alerts_for_news(db: Session, news: News) -> int:
         if existing_notification is not None:
             continue
 
+        notification_metrics = build_default_metrics(news, medium_name)
+        notification_timestamp = (
+            getattr(news, "published_at", None)
+            or datetime.now(timezone.utc)
+        )
+
         if alert.notify_in_app:
             notification = notification_repo.create(
                 title=title,
@@ -225,6 +232,8 @@ def process_alerts_for_news(db: Session, news: News) -> int:
                 user_id=owner.id,
                 alert_id=alert.id,
                 news_id=news.id,
+                timestamp=notification_timestamp,
+                metrics=notification_metrics,
             )
             if notification is not None:
                 created_count += 1

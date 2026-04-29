@@ -37,9 +37,10 @@ class User(Base):
 
     email = Column(String, unique=True, index=True, nullable=False)
 
-    first_name = Column(String, nullable=False)
-    last_name = Column(String, nullable=False)
-    organization = Column(String, nullable=True)
+    # Tras T6.7: tamaños alineados con la API oficial.
+    first_name = Column(String(120), nullable=False)
+    last_name = Column(String(120), nullable=False)
+    organization = Column(String(180), nullable=False)
 
     hashed_password = Column(String, nullable=False)
 

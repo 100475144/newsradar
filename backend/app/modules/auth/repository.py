@@ -29,7 +29,7 @@ class UserRepository:
             email=user_data.email.strip().lower(),
             first_name=user_data.first_name.strip(),
             last_name=user_data.last_name.strip(),
-            organization=user_data.organization.strip() if user_data.organization else None,
+            organization=user_data.organization.strip(),
             hashed_password=hashed_password,
         )
         # CAMBIO #1bis: asignar siempre el rol "gestor" automáticamente.

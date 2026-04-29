@@ -1,17 +1,25 @@
 import { request } from './client'
 
+// Tras T6.5, los endpoints anidados oficiales viven bajo
+// /users/{user_id}/alerts/{alert_id}/notifications. Para la bandeja de entrada
+// del usuario logueado usamos endpoints añadidos bajo /users/me/notifications.
+
 export function getNotifications() {
-  return request('/notifications/')
+  return request('/users/me/notifications')
+}
+
+export function getNotificationDetails(id) {
+  return request(`/users/me/notifications/${id}/details`)
 }
 
 export function markAsRead(id) {
-  return request(`/notifications/${id}/read`, { method: 'PATCH' })
+  return request(`/users/me/notifications/${id}/read`, { method: 'PATCH' })
 }
 
 export function markAsUnread(id) {
-  return request(`/notifications/${id}/unread`, { method: 'PATCH' })
+  return request(`/users/me/notifications/${id}/unread`, { method: 'PATCH' })
 }
 
 export function deleteNotification(id) {
-  return request(`/notifications/${id}`, { method: 'DELETE' })
+  return request(`/users/me/notifications/${id}`, { method: 'DELETE' })
 }
