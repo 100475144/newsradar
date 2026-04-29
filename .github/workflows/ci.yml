@@ -31,6 +31,13 @@ jobs:
     env:
       DATABASE_URL: postgresql+psycopg://user:password@localhost:5432/newsradar_test
       MAILHOG_API_URL: http://localhost:8025/api/v2/messages
+      # MailHog SMTP (servicio levantado arriba en :1025).
+      # Sin estas variables, send_email_notification() corta y el test
+      # ``test_alert_email_notification`` falla esperando un email que nunca llega.
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      SMTP_SENDER: no-reply@newsradar.local
+      SMTP_USE_TLS: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
