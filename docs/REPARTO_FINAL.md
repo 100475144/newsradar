@@ -1,6 +1,6 @@
 # Reparto de tareas finales — NEWSRADAR
 
-**Última actualización:** 30 abril 2026 (tras cerrar Fase 2 completa).
+**Última actualización:** 30 abril 2026 (tras cerrar Fase 3 sin CDx).
 
 Este documento se cruza con:
 - `DOSS-CHECKLIST_2026` (40 checks de proyecto + 26 de proceso)
@@ -20,7 +20,7 @@ Cada persona trabaja en `feature/<nombre>-<tema>` y abre PR a `main` con review 
 | **Fase 0** | Infra base + cumplir adenda CAMBIO #1/#1bis + verificaciones | ✅ Cerrada (rama `feature/phase0-cristina`) |
 | **Fase 1** | Refactor masivo para alinear API con `main.py` oficial (CAMBIO #3) | ✅ Cerrada (rama `feature/phase1-cristina-t6.3-t6.4`) |
 | **Fase 2** | Dashboard per-user + tests ampliados + cobertura + documentación + ADRs + diagramas + .env.example | ✅ Cerrada (rama `feature/phase2-cristina`) |
-| **Fase 3** | Tests frontend + CD + Sonar + traceability + prompts IA | 🔴 Pendiente |
+| **Fase 3** | Tests frontend + CD + Sonar + traceability + prompts IA | 🟡 Parcial (TS4 / TS5 / D4 / D5 ✅, CDx pendiente) |
 
 ---
 
@@ -96,10 +96,19 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ pendiente
 | 36 | Métricas calidad (SonarQube) | ❌ | (CD3) |
 | 37 | Despliegue automático máquina limpia | 🟡 | `docker compose up` lo hace; documentar (CD2) |
 | 38 | Informe cobertura automático | ✅ | `pytest-cov` integrado en CI; artefacto `backend-coverage` (TS3) |
-| 39 | Trazabilidad requisitos-código | ❌ | (D4) |
-| 40 | Registro de prompts IA | ❌ | (D5) |
+| 39 | Trazabilidad requisitos-código | ✅ | `docs/traceability.md` (D4) |
+| 40 | Registro de prompts IA | ✅ | `docs/ai-prompts.md` (D5) |
 
-**Resumen actual tras Fase 2: 36 ✅ · 2 🟡 · 2 ❌** (vs 30 ✅ · 7 🟡 · 3 ❌ antes de Fase 2; 22 ✅ · 11 🟡 · 7 ❌ antes de Fase 1).
+**Resumen actual tras Fase 3 (sin CDx): 38 ✅ · 2 🟡 · 0 ❌**
+
+(Histórico: 22 ✅ pre-Fase 1 → 30 ✅ tras Fase 1 → 36 ✅ tras Fase 2 → **38 ✅ tras Fase 3**.)
+
+Quedan dos checks "parciales" pendientes solo de los CDx asignados a Javier:
+- 🟡 #35 Pipeline CD (CD1)
+- 🟡 #37 Despliegue máquina limpia documentado (CD2)
+- 🟡 #36 Métricas calidad (CD3) — sí cuenta como ❌ estricto pero al haberlo asignado ya queda fuera de mi alcance.
+
+Tras los 3 CDx, llegaríamos a 40/40.
 
 ---
 
@@ -141,17 +150,22 @@ Leyenda: ✅ hecho · 🟡 parcial · ❌ pendiente
 | **D3** | Docs técnicas core | `architecture.md`, `api-design.md`, `database-design.md`, `extension-guide.md`, `testing-strategy.md` |
 | **D6** | `.env.example` raíz + backend | Plantillas con comentarios, sin secretos |
 
-### 🔴 Pendientes Fase 3 (única que queda)
+### ✅ Hechas en Fase 3 (Cristina)
+
+| ID | Tarea | Notas |
+|---|---|---|
+| **TS4** | Smoke tests frontend con vitest | `vitest.config.js` + setup con mock de i18n y fetch + 3 tests (LoginPage, AlertsPage, NewsPage). `npm test` integrado en CI. |
+| **TS5** | Tests crawler | `tests/test_crawler.py` (6 tests): success, empty feed, malformed entries, broken feed, dedup, only-active. Refactor del crawler para no romper con entries inválidos. |
+| **D4** | Trazabilidad requisitos↔código↔tests | `docs/traceability.md` con tabla completa de los 40 checks + adendas/dudas oficiales. |
+| **D5** | Registro de prompts IA | `docs/ai-prompts.md` con todos los prompts por fase, propósito y resultado. |
+
+### 🔴 Pendientes Fase 3 (CDx — Javier)
 
 | ID | Tarea | Responsable | Detalle | Cubre check |
 |---|---|---|---|---|
-| **TS4** | Smoke tests frontend (vitest) | **100475102** | Instalar vitest + 3 tests de páginas clave | (refuerza #34) |
-| **TS5** | Tests crawler (success, error, dedup) | **100475101** | Mockear feedparser; 3 archivos test | (refuerza #34) |
 | **CD1** | Pipeline despliegue (GitHub Actions) | **Javier** | Build + push imágenes a `ghcr.io` en push a main | #35 |
 | **CD2** | Documentar despliegue máquina limpia | **Javier** | Sección en `docs/deployment.md` | #37 |
 | **CD3** | SonarCloud o métricas calidad | **Javier** | Action Sonar o `ruff/eslint` como artefactos | #36 |
-| **D4** | Trazabilidad requisitos-código | **Cristina** | Tabla en `docs/traceability.md` | #39 |
-| **D5** | Registro de prompts IA | **Cristina** | `docs/ai-prompts.md` | #40 |
 
 ### Tareas obsoletas
 
