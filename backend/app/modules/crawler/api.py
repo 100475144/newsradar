@@ -23,7 +23,7 @@ def run_crawler(
     current_user: User = Depends(get_current_active_verified_user),
     service: CrawlerService = Depends(get_crawler_service),
 ):
-    results = service.crawl_all_active_sources(current_user.id)
+    results = service.crawl_all_active_sources()
     return {
         "status": "ok",
         "processed_sources": len(results),
