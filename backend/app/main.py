@@ -10,7 +10,7 @@ from app.core.database import session_newsradar
 from app.core.logging_config import configure_logging
 from app.core.security import get_password_hash
 from app.core.seed_sources import get_seed_catalog_summary, seed_default_sources
-from app.modules.auth.models import User
+from app.modules.auth.models import Role, User
 from app.modules.crawler.scheduler import (
     CrawlerScheduler,
     get_crawler_cron_expression,
@@ -19,14 +19,36 @@ from app.modules.crawler.scheduler import (
 logger = logging.getLogger(__name__)
 
 
+def _ensure_canonical_roles(db) -> None:
+    """Asegura que los roles canónicos (admin y gestor) existan en BD.
+
+    La migración Alembic los siembra, pero esto es defensa en profundidad para
+    entornos donde se haya creado la BD con `Base.metadata.create_all` (tests
+    o despliegues sin migrar)."""
+    for role_name in ("admin", "gestor"):
+        existing = db.query(Role).filter(Role.name == role_name).first()
+        if existing is None:
+            db.add(Role(name=role_name))
+    db.commit()
+
+
 def _seed_admin_user() -> None:
     """Create the initial admin user if it does not exist yet."""
     db = session_newsradar()
     try:
+        _ensure_canonical_roles(db)
+
         existing = db.query(User).filter(User.email == settings.admin_email).first()
         if existing:
+            # Asegurar que el admin tiene el rol "admin" asociado (defensa en
+            # profundidad para BBDD pre-existentes).
+            admin_role = db.query(Role).filter(Role.name == "admin").first()
+            if admin_role is not None and admin_role not in existing.roles:
+                existing.roles.append(admin_role)
+                db.commit()
             return
 
+        admin_role = db.query(Role).filter(Role.name == "admin").first()
         admin = User(
             email=settings.admin_email,
             first_name=settings.admin_first_name,
@@ -37,6 +59,8 @@ def _seed_admin_user() -> None:
             is_active=True,
             is_verified=True,
         )
+        if admin_role is not None:
+            admin.roles.append(admin_role)
         db.add(admin)
         db.commit()
         logger.info("Admin user seeded: %s", settings.admin_email)

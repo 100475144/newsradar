@@ -5,8 +5,12 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.modules.auth.models import EmailVerificationToken, User
+from app.modules.auth.models import EmailVerificationToken, Role, User
 from app.modules.auth.schemas import UserCreate
+
+# Nombre canónico del rol asignado por defecto a los nuevos usuarios.
+# CAMBIO #1bis del enunciado: todo nuevo usuario es "gestor" automáticamente.
+DEFAULT_ROLE_NAME = "gestor"
 
 
 class UserRepository:
@@ -28,6 +32,10 @@ class UserRepository:
             organization=user_data.organization.strip() if user_data.organization else None,
             hashed_password=hashed_password,
         )
+        # CAMBIO #1bis: asignar siempre el rol "gestor" automáticamente.
+        gestor_role = self.db.query(Role).filter(Role.name == DEFAULT_ROLE_NAME).first()
+        if gestor_role is not None:
+            user.roles.append(gestor_role)
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)

@@ -1,14 +1,20 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserRole(str, Enum):
+    """Roles del sistema.
+
+    El rol "lector" se eliminó por adenda oficial al enunciado: todos los nuevos
+    usuarios son "gestor" automáticamente. El rol "admin" se mantiene para
+    permitir asignaciones via los endpoints de administración (CAMBIO #1).
+    """
+
     ADMIN = "admin"
     GESTOR = "gestor"
-    LECTOR = "lector"
 
 
 class UserBase(BaseModel):
@@ -85,11 +91,33 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: int
-    role: UserRole = UserRole.LECTOR
+    role: UserRole = UserRole.GESTOR
+    role_ids: List[int] = Field(default_factory=list)
     is_active: bool = True
     is_verified: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Roles (entidad propia, alineada con la API oficial) ──────────────
+
+
+class RoleBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class RoleCreate(RoleBase):
+    pass
+
+
+class RoleUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+
+
+class RoleResponse(RoleBase):
+    id: int
 
     model_config = ConfigDict(from_attributes=True)
 

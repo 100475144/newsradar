@@ -11,7 +11,6 @@ import {
 } from '../api/alertsApi'
 import { getSources } from '../api/sourcesApi'
 import { request } from '../api/client'
-import { useAuth } from '../context/AuthContext'
 
 const INITIAL_FORM = {
   name: '',
@@ -352,9 +351,9 @@ function AlertRow({ alert, onEdit, onDelete, onToggle, busy, canEdit }) {
 }
 
 export default function AlertsPage() {
-  const { user } = useAuth()
   const { t } = useTranslation()
-  const canEdit = user?.role !== 'lector'
+  // El rol "lector" se eliminó por adenda oficial: todos los autenticados son gestores.
+  const canEdit = true
   const [state, dispatch] = useReducer(alertsReducer, {
     status: 'loading',
     items: [],

@@ -8,7 +8,6 @@ import {
   updateSource,
 } from '../api/sourcesApi'
 import { request } from '../api/client'
-import { useAuth } from '../context/AuthContext'
 
 const INITIAL_FORM = {
   medium_name: '',
@@ -167,9 +166,9 @@ function SourceRow({ source, onEdit, onDelete, onToggle, busy, categories, canEd
 }
 
 export default function SourcesPage() {
-  const { user } = useAuth()
   const { t } = useTranslation()
-  const canEdit = user?.role !== 'lector'
+  // El rol "lector" se eliminó por adenda oficial: todos los autenticados son gestores.
+  const canEdit = true
   const [state, dispatch] = useReducer(sourcesReducer, {
     status: 'loading',
     items: [],
