@@ -21,5 +21,5 @@ class Alert(Base):
     notify_in_app = Column(Boolean, nullable=False, default=True)
     notify_email = Column(Boolean, nullable=False, default=False)
 
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     owner = relationship("User")
