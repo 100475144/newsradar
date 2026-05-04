@@ -170,9 +170,11 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
+          # ``sonar.sources``, ``sonar.tests`` y exclusiones viven en
+          # ``sonar-project.properties`` para evitar duplicar ``.`` y que
+          # un archivo aparezca dos veces (sources y tests a la vez).
           args: >
             -Dsonar.organization=100475144
             -Dsonar.projectKey=100475144_newsradar
-            -Dsonar.sources=.
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
             -Dsonar.python.version=3.11
