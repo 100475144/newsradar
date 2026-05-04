@@ -4,13 +4,15 @@ from sqlalchemy.sql import func
 
 from app.core.database import Base
 
+USERS_ID_FK = "users.id"
+
 
 # Tabla de asociación m:n entre usuarios y roles.
 # Necesaria para alinearnos con la API oficial, donde un User tiene `role_ids: List[int]`.
 user_roles = Table(
     "user_roles",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("user_id", Integer, ForeignKey(USERS_ID_FK, ondelete="CASCADE"), primary_key=True),
     Column("role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
 )
 
@@ -72,7 +74,7 @@ class EmailVerificationToken(Base):
     __tablename__ = "email_verification_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey(USERS_ID_FK, ondelete="CASCADE"), nullable=False, index=True)
     token = Column(String, unique=True, nullable=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -82,7 +84,7 @@ class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey(USERS_ID_FK, ondelete="CASCADE"), nullable=False, index=True)
     token = Column(String, unique=True, nullable=False, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

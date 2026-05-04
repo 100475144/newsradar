@@ -62,7 +62,7 @@ export default function ProfilePage() {
   }
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm(t('profile.delete_confirm'))) return
+    if (!globalThis.confirm(t('profile.delete_confirm'))) return
     setStatus('deleting')
     setMessage('')
 

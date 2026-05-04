@@ -1,6 +1,6 @@
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, TypeVar
 
 from sqlalchemy.orm import Session
 
@@ -11,11 +11,16 @@ from app.modules.auth.schemas import UserCreate
 # Nombre canónico del rol asignado por defecto a los nuevos usuarios.
 # CAMBIO #1bis del enunciado: todo nuevo usuario es "gestor" automáticamente.
 DEFAULT_ROLE_NAME = "gestor"
+TokenModel = TypeVar("TokenModel", EmailVerificationToken, PasswordResetToken)
 
 
 class UserRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
+
+    def _delete_token(self, token_obj: TokenModel) -> None:
+        self.db.delete(token_obj)
+        self.db.commit()
 
     def get_by_id(self, user_id: int) -> Optional[User]:
         return self.db.query(User).filter(User.id == user_id).first()
@@ -81,8 +86,7 @@ class UserRepository:
         )
 
     def delete_verification_token(self, token_obj: EmailVerificationToken) -> None:
-        self.db.delete(token_obj)
-        self.db.commit()
+        self._delete_token(token_obj)
 
     # Password reset tokens
 
@@ -111,5 +115,4 @@ class UserRepository:
         )
 
     def delete_password_reset_token(self, token_obj: PasswordResetToken) -> None:
-        self.db.delete(token_obj)
-        self.db.commit()
+        self._delete_token(token_obj)

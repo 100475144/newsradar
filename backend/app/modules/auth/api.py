@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
@@ -31,7 +33,6 @@ def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     """Build the auth service with its database-backed repository."""
     repository = UserRepository(db)
     return AuthService(repository)
-
 
 @router.post(
     "/register",
@@ -98,12 +99,11 @@ def resend_verification(
 
 @router.post(
     "/forgot-password",
-    response_model=MessageResponse,
     status_code=status.HTTP_200_OK,
 )
 def forgot_password(
     payload: ForgotPasswordRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> MessageResponse:
     """Send a password reset email when the account exists."""
     auth_service.request_password_reset(payload.email)
@@ -114,12 +114,11 @@ def forgot_password(
 
 @router.post(
     "/reset-password",
-    response_model=MessageResponse,
     status_code=status.HTTP_200_OK,
 )
 def reset_password(
     payload: ResetPasswordRequest,
-    auth_service: AuthService = Depends(get_auth_service),
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> MessageResponse:
     """Reset a password using a valid password reset token."""
     try:
