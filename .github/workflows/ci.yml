@@ -171,8 +171,8 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.organization=newsradar
-            -Dsonar.projectKey=newsradar
+            -Dsonar.organization=100475144
+            -Dsonar.projectKey=100475144_newsradar
             -Dsonar.sources=.
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
             -Dsonar.python.version=3.11
