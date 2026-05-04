@@ -29,3 +29,10 @@ export function getCurrentUser(token) {
     token,
   })
 }
+
+export function updateUserProfile(userId, payload) {
+  return request(`/users/${userId}`, {
+    method: 'PUT',
+    body: payload,
+  })
+}

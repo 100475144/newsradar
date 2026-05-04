@@ -8,7 +8,8 @@
       "sources": "Fuentes",
       "alerts": "Alertas",
       "news": "Noticias",
-      "notifications": "Notificaciones"
+      "notifications": "Notificaciones",
+      "profile": "Perfil"
     },
     "signed_in_as": "Conectado como",
     "no_org": "Sin organización asignada",
@@ -190,5 +191,21 @@
     "mark_read": "Marcar como leída",
     "delete": "Eliminar",
     "delete_confirm": "¿Eliminar esta notificación?"
+  },
+  "profile": {
+    "eyebrow": "Perfil de usuario",
+    "title": "Ajustes del perfil",
+    "subtitle": "Revisa y actualiza tus datos personales dentro del espacio NEWSRADAR.",
+    "personal_data": "Datos personales",
+    "first_name": "Nombre",
+    "last_name": "Apellidos",
+    "organization": "Organización",
+    "email": "Correo electrónico",
+    "new_password": "Nueva contraseña",
+    "password_placeholder": "Déjalo en blanco para mantener la contraseña actual",
+    "saving": "Guardando...",
+    "save": "Guardar perfil",
+    "saved": "Perfil actualizado correctamente.",
+    "save_error": "No se ha podido actualizar el perfil."
   }
 }

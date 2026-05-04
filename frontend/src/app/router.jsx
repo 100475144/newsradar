@@ -17,6 +17,7 @@ import SourcesPage from '../pages/SourcesPage'
 import AlertsPage from '../pages/AlertsPage'
 import NewsPage from '../pages/NewsPage'
 import NotificationsPage from '../pages/NotificationsPage'
+import ProfilePage from '../pages/ProfilePage'
 
 function SessionLoader() {
   return (
@@ -97,6 +98,7 @@ export default function AppRouter() {
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/news" element={<NewsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>
 

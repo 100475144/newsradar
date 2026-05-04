@@ -8,7 +8,8 @@
       "sources": "Sources",
       "alerts": "Alerts",
       "news": "News",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "profile": "Profile"
     },
     "signed_in_as": "Signed in as",
     "no_org": "No organization assigned yet",
@@ -190,5 +191,21 @@
     "mark_read": "Mark read",
     "delete": "Delete",
     "delete_confirm": "Delete this notification?"
+  },
+  "profile": {
+    "eyebrow": "User profile",
+    "title": "Profile settings",
+    "subtitle": "Review and update your personal data for the NEWSRADAR workspace.",
+    "personal_data": "Personal data",
+    "first_name": "First name",
+    "last_name": "Last name",
+    "organization": "Organization",
+    "email": "Email",
+    "new_password": "New password",
+    "password_placeholder": "Leave blank to keep your current password",
+    "saving": "Saving...",
+    "save": "Save profile",
+    "saved": "Profile updated successfully.",
+    "save_error": "Unable to update your profile."
   }
 }
