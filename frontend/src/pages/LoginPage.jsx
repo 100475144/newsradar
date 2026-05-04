@@ -114,6 +114,10 @@ export default function LoginPage() {
       </form>
 
       <p className="auth-card__footer">
+        <Link to="/forgot-password">{t('login.forgot_password')}</Link>
+      </p>
+
+      <p className="auth-card__footer">
         {t('login.no_account')} <Link to="/register">{t('login.create_one')}</Link>.
       </p>
     </div>

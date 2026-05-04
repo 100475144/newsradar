@@ -64,8 +64,33 @@
     "sign_in": "Sign in",
     "resending": "Resending verification email...",
     "resend": "Resend verification email",
+    "forgot_password": "Forgot your password?",
     "no_account": "No account yet?",
     "create_one": "Create one now"
+  },
+  "forgot_password": {
+    "eyebrow": "Password recovery",
+    "title": "Recover your password",
+    "subtitle": "Enter your account email and we will send you a link to create a new password.",
+    "email": "Email",
+    "sending": "Sending reset link...",
+    "send": "Send reset link",
+    "sent": "If the email exists, a password reset link has been sent.",
+    "error": "Unable to send the password reset email.",
+    "back_to_login": "Back to sign in"
+  },
+  "reset_password": {
+    "eyebrow": "Password recovery",
+    "title": "Create a new password",
+    "subtitle": "Choose a new password for your NEWSRADAR account.",
+    "password": "New password",
+    "password_placeholder": "Minimum 8 characters",
+    "saving": "Saving password...",
+    "save": "Save new password",
+    "saved": "Password updated successfully. You can now sign in.",
+    "error": "Unable to update your password.",
+    "invalid_link": "This password reset link is invalid or incomplete.",
+    "back_to_login": "Back to sign in"
   },
   "register": {
     "eyebrow": "New workspace",
@@ -206,6 +231,12 @@
     "saving": "Saving...",
     "save": "Save profile",
     "saved": "Profile updated successfully.",
-    "save_error": "Unable to update your profile."
+    "save_error": "Unable to update your profile.",
+    "danger_zone": "Danger zone",
+    "delete_help": "Permanently delete your account and close this session.",
+    "delete_account": "Delete account",
+    "deleting": "Deleting account...",
+    "delete_confirm": "Delete your account permanently? This cannot be undone.",
+    "delete_error": "Unable to delete your account."
   }
 }

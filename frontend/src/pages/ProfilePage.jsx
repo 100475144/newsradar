@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { updateUserProfile } from '../api/authApi'
+import { deleteUserAccount, updateUserProfile } from '../api/authApi'
 import { useAuth } from '../context/AuthContext'
 
 const EMPTY_FORM = {
@@ -12,7 +12,7 @@ const EMPTY_FORM = {
 }
 
 export default function ProfilePage() {
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, logout } = useAuth()
   const { t } = useTranslation()
   const [formData, setFormData] = useState(EMPTY_FORM)
   const [status, setStatus] = useState('idle')
@@ -58,6 +58,20 @@ export default function ProfilePage() {
     } catch (error) {
       setStatus('error')
       setMessage(error.message || t('profile.save_error'))
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm(t('profile.delete_confirm'))) return
+    setStatus('deleting')
+    setMessage('')
+
+    try {
+      await deleteUserAccount(user.id)
+      logout()
+    } catch (error) {
+      setStatus('error')
+      setMessage(error.message || t('profile.delete_error'))
     }
   }
 
@@ -128,7 +142,7 @@ export default function ProfilePage() {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              minLength={6}
+              minLength={8}
               maxLength={128}
               placeholder={t('profile.password_placeholder')}
               autoComplete="new-password"
@@ -153,6 +167,19 @@ export default function ProfilePage() {
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="panel-card">
+        <h2>{t('profile.danger_zone')}</h2>
+        <p className="panel-card__text">{t('profile.delete_help')}</p>
+        <button
+          type="button"
+          className="danger-button"
+          onClick={handleDeleteAccount}
+          disabled={status === 'deleting'}
+        >
+          {status === 'deleting' ? t('profile.deleting') : t('profile.delete_account')}
+        </button>
       </div>
     </section>
   )

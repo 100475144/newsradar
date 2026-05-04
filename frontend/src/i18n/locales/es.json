@@ -64,8 +64,33 @@
     "sign_in": "Iniciar sesión",
     "resending": "Reenviando correo de verificación...",
     "resend": "Reenviar correo de verificación",
+    "forgot_password": "¿Has olvidado tu contraseña?",
     "no_account": "¿No tienes cuenta?",
     "create_one": "Créala ahora"
+  },
+  "forgot_password": {
+    "eyebrow": "Recuperación de contraseña",
+    "title": "Recupera tu contraseña",
+    "subtitle": "Introduce el correo de tu cuenta y te enviaremos un enlace para crear una nueva contraseña.",
+    "email": "Correo electrónico",
+    "sending": "Enviando enlace...",
+    "send": "Enviar enlace",
+    "sent": "Si el correo existe, se ha enviado un enlace de recuperación.",
+    "error": "No se ha podido enviar el correo de recuperación.",
+    "back_to_login": "Volver al inicio de sesión"
+  },
+  "reset_password": {
+    "eyebrow": "Recuperación de contraseña",
+    "title": "Crea una nueva contraseña",
+    "subtitle": "Elige una nueva contraseña para tu cuenta de NEWSRADAR.",
+    "password": "Nueva contraseña",
+    "password_placeholder": "Mínimo 8 caracteres",
+    "saving": "Guardando contraseña...",
+    "save": "Guardar nueva contraseña",
+    "saved": "Contraseña actualizada correctamente. Ya puedes iniciar sesión.",
+    "error": "No se ha podido actualizar la contraseña.",
+    "invalid_link": "Este enlace de recuperación es inválido o está incompleto.",
+    "back_to_login": "Volver al inicio de sesión"
   },
   "register": {
     "eyebrow": "Nuevo espacio",
@@ -206,6 +231,12 @@
     "saving": "Guardando...",
     "save": "Guardar perfil",
     "saved": "Perfil actualizado correctamente.",
-    "save_error": "No se ha podido actualizar el perfil."
+    "save_error": "No se ha podido actualizar el perfil.",
+    "danger_zone": "Zona de peligro",
+    "delete_help": "Elimina tu cuenta de forma permanente y cierra esta sesión.",
+    "delete_account": "Eliminar cuenta",
+    "deleting": "Eliminando cuenta...",
+    "delete_confirm": "¿Eliminar tu cuenta permanentemente? Esta acción no se puede deshacer.",
+    "delete_error": "No se ha podido eliminar la cuenta."
   }
 }
