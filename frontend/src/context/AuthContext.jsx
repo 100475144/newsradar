@@ -70,6 +70,13 @@ export function AuthProvider({ children }) {
     return registerUser(payload)
   }
 
+  const refreshUser = async () => {
+    if (!token) return null
+    const currentUser = await getCurrentUser(token)
+    setUser(currentUser)
+    return currentUser
+  }
+
   const logout = () => {
     clearStoredToken()
     setToken(null)
@@ -83,6 +90,7 @@ export function AuthProvider({ children }) {
     isBootstrapping,
     login,
     register,
+    refreshUser,
     logout,
   }
 

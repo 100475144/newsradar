@@ -74,6 +74,31 @@ class UserLogin(BaseModel):
         return value
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("token")
+    @classmethod
+    def validate_token(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Reset token cannot be empty.")
+        return value
+
+    @field_validator("password")
+    @classmethod
+    def validate_reset_password(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
+        return value
+
+
 class UserUpdate(BaseModel):
     """Schema oficial de PUT /users/{id}.
 
@@ -85,7 +110,7 @@ class UserUpdate(BaseModel):
     last_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     organization: Optional[str] = Field(default=None, min_length=1, max_length=180)
     role_ids: Optional[List[int]] = None
-    password: Optional[str] = Field(default=None, min_length=6, max_length=128)
+    password: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
     @field_validator("first_name", "last_name")
     @classmethod

@@ -1,21 +1,26 @@
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, TypeVar
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.modules.auth.models import EmailVerificationToken, Role, User
+from app.modules.auth.models import EmailVerificationToken, PasswordResetToken, Role, User
 from app.modules.auth.schemas import UserCreate
 
 # Nombre canónico del rol asignado por defecto a los nuevos usuarios.
 # CAMBIO #1bis del enunciado: todo nuevo usuario es "gestor" automáticamente.
 DEFAULT_ROLE_NAME = "gestor"
+TokenModel = TypeVar("TokenModel", EmailVerificationToken, PasswordResetToken)
 
 
 class UserRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
+
+    def _delete_token(self, token_obj: TokenModel) -> None:
+        self.db.delete(token_obj)
+        self.db.commit()
 
     def get_by_id(self, user_id: int) -> Optional[User]:
         return self.db.query(User).filter(User.id == user_id).first()
@@ -81,5 +86,33 @@ class UserRepository:
         )
 
     def delete_verification_token(self, token_obj: EmailVerificationToken) -> None:
-        self.db.delete(token_obj)
+        self._delete_token(token_obj)
+
+    # Password reset tokens
+
+    def create_password_reset_token(self, user_id: int) -> PasswordResetToken:
+        self.db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user_id
+        ).delete()
+
+        token = PasswordResetToken(
+            user_id=user_id,
+            token=secrets.token_urlsafe(48),
+            expires_at=datetime.now(timezone.utc) + timedelta(
+                hours=settings.verification_token_expire_hours
+            ),
+        )
+        self.db.add(token)
         self.db.commit()
+        self.db.refresh(token)
+        return token
+
+    def get_password_reset_token(self, token: str) -> Optional[PasswordResetToken]:
+        return (
+            self.db.query(PasswordResetToken)
+            .filter(PasswordResetToken.token == token)
+            .first()
+        )
+
+    def delete_password_reset_token(self, token_obj: PasswordResetToken) -> None:
+        self._delete_token(token_obj)

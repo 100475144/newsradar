@@ -63,3 +63,16 @@ def send_verification_email(to_email: str, token: str) -> bool:
         f"Si no te has registrado, ignora este correo."
     )
     return send_email(to_email, subject, body)
+
+
+def send_password_reset_email(to_email: str, token: str) -> bool:
+    reset_url = f"{settings.frontend_url}/reset-password?token={token}"
+    subject = "NewsRadar - Recuperacion de contrasena"
+    body = (
+        "Hemos recibido una solicitud para recuperar tu contrasena de NewsRadar.\n\n"
+        "Para crear una nueva contrasena, abre este enlace:\n\n"
+        f"{reset_url}\n\n"
+        "Este enlace caduca en 24 horas.\n\n"
+        "Si no has solicitado este cambio, puedes ignorar este correo."
+    )
+    return send_email(to_email, subject, body)

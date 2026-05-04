@@ -7,13 +7,17 @@
 - DELETE /api/v1/stats/{stats_id}
 """
 
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_verified_user, get_db
 from app.modules.auth.models import User
+from app.modules.alerts.models import Alert
+from app.modules.news.models import News
+from app.modules.sources.models import InformationSource, RSSChannel
 from app.modules.stats.models import Stats
 from app.modules.stats.schemas import StatsCreate, StatsResponse, StatsUpdate
 
@@ -51,12 +55,61 @@ def _normalize_metrics(metrics) -> list[dict]:
     return cleaned
 
 
+def _category_name(category) -> str:
+    if isinstance(category, dict):
+        return str(category.get("label") or category.get("name") or category.get("code") or "Sin categoria")
+    return str(category or "Sin categoria")
+
+
+def _sorted_category_counts(counts: dict[str, int]) -> list[dict]:
+    return [
+        {"category": category, "count": count}
+        for category, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+
 @router.get("", response_model=List[StatsResponse])
 def list_stats(
     _: User = Depends(get_current_active_verified_user),
     db: Session = Depends(get_db),
 ):
     return db.query(Stats).order_by(Stats.id).all()
+
+
+@router.get("/global")
+def get_global_stats(
+    _: Annotated[User, Depends(get_current_active_verified_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    news_category_rows = (
+        db.query(News.category, func.count(News.id))
+        .group_by(News.category)
+        .all()
+    )
+    news_category_counts: dict[str, int] = {}
+    for category, count in news_category_rows:
+        name = _category_name(category)
+        news_category_counts[name] = news_category_counts.get(name, 0) + count
+    news_by_category = _sorted_category_counts(news_category_counts)
+
+    alert_category_counts: dict[str, int] = {}
+    for (categories,) in db.query(Alert.categories).all():
+        for category in categories or []:
+            name = _category_name(category)
+            alert_category_counts[name] = alert_category_counts.get(name, 0) + 1
+
+    total_rss_channels = db.query(RSSChannel).count()
+    total_media_outlets = db.query(InformationSource).count()
+
+    return {
+        "total_sources": total_rss_channels,
+        "total_rss_channels": total_rss_channels,
+        "total_media_outlets": total_media_outlets,
+        "total_news": db.query(News).count(),
+        "news_by_category": news_by_category,
+        "total_alerts": db.query(Alert).count(),
+        "alerts_by_category": _sorted_category_counts(alert_category_counts),
+    }
 
 
 @router.post(

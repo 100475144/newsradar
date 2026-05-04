@@ -13,10 +13,13 @@ import DashboardPage from '../pages/DashboardPage'
 import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
 import VerifyEmailPage from '../pages/VerifyEmailPage'
+import ForgotPasswordPage from '../pages/ForgotPasswordPage'
+import ResetPasswordPage from '../pages/ResetPasswordPage'
 import SourcesPage from '../pages/SourcesPage'
 import AlertsPage from '../pages/AlertsPage'
 import NewsPage from '../pages/NewsPage'
 import NotificationsPage from '../pages/NotificationsPage'
+import ProfilePage from '../pages/ProfilePage'
 
 function SessionLoader() {
   return (
@@ -83,6 +86,8 @@ export default function AppRouter() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
           </Route>
         </Route>
 
@@ -97,6 +102,7 @@ export default function AppRouter() {
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/news" element={<NewsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Route>
 

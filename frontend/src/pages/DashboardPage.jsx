@@ -3,13 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { getHealth } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-import { getAlerts, getAlertsStats } from '../api/alertsApi'
-import {
-  getMyNewsStats,
-  getMyNewsWordcloud,
-  getNews,
-} from '../api/newsApi'
+import { getAlerts } from '../api/alertsApi'
+import { getMyNewsStats, getMyNewsWordcloud, getNews } from '../api/newsApi'
 import { getNotifications } from '../api/notificationsApi'
+import { getGlobalStats } from '../api/statsApi'
 
 const CHART_COLORS = [
   '#17324d', '#bb4d00', '#2a5478', '#d4742e', '#3d6f9e',
@@ -17,6 +14,10 @@ const CHART_COLORS = [
   '#7a4a14', '#3b5068', '#c98040', '#28425a', '#9e6838',
   '#506a80', '#d09050',
 ]
+
+function formatNumber(value) {
+  return value === null || value === undefined ? '...' : value.toLocaleString()
+}
 
 function WordCloud({ words, t }) {
   if (!words || words.length === 0) {
@@ -61,6 +62,74 @@ function WordCloud({ words, t }) {
   )
 }
 
+function StatCard({ eyebrow, value, label, accent }) {
+  return (
+    <article
+      className="panel-card"
+      style={{
+        textAlign: 'left',
+        borderTop: `4px solid ${accent}`,
+        minHeight: '132px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+      }}
+    >
+      <p className="eyebrow" style={{ marginBottom: '0.75rem', color: accent }}>{eyebrow}</p>
+      <p style={{ fontSize: '2.25rem', fontWeight: 700, margin: 0, color: accent }}>
+        {formatNumber(value)}
+      </p>
+      <p className="panel-card__text" style={{ fontSize: '0.82rem', marginBottom: 0 }}>{label}</p>
+    </article>
+  )
+}
+
+function CategoryBars({ title, data, countLabel, t }) {
+  if (!data || data.length === 0) {
+    return (
+      <article className="panel-card">
+        <h2>{title}</h2>
+        <p className="panel-card__text">{t('dashboard.no_data')}</p>
+      </article>
+    )
+  }
+
+  return (
+    <article className="panel-card">
+      <h2>{title}</h2>
+      <ResponsiveContainer width="100%" height={Math.max(220, data.length * 42)}>
+        <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+          <YAxis type="category" dataKey="category" width={112} tick={{ fontSize: 11 }} />
+          <Tooltip />
+          <Bar dataKey="count" name={countLabel} radius={[0, 6, 6, 0]}>
+            {data.map((item, i) => (
+              <Cell key={item.category} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+        {data.map((item) => (
+          <div
+            key={item.category}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              fontSize: '0.8rem',
+              textTransform: 'uppercase',
+            }}
+          >
+            <span style={{ color: 'var(--muted)' }}>{item.category}</span>
+            <span style={{ fontWeight: 700 }}>{item.count}</span>
+          </div>
+        ))}
+      </div>
+    </article>
+  )
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
   const { t } = useTranslation()
@@ -69,7 +138,7 @@ export default function DashboardPage() {
   const [latestNews, setLatestNews] = useState([])
   const [unreadCount, setUnreadCount] = useState(null)
   const [newsStats, setNewsStats] = useState(null)
-  const [alertsStats, setAlertsStats] = useState(null)
+  const [globalStats, setGlobalStats] = useState(null)
   const [wordcloudData, setWordcloudData] = useState(null)
   const [wordcloudCategory, setWordcloudCategory] = useState('')
 
@@ -94,21 +163,21 @@ export default function DashboardPage() {
 
     async function loadWidgets() {
       try {
-        const [alerts, news, notifications, nStats, aStats, wcloud] = await Promise.all([
+        const [alerts, news, notifications, nStats, wcloud, gStats] = await Promise.all([
           getAlerts(),
           getNews({ limit: 5 }),
           getNotifications(),
           getMyNewsStats(),
-          getAlertsStats(),
           getMyNewsWordcloud(),
+          getGlobalStats(),
         ])
         if (!ignore) {
           setActiveAlertsCount(alerts.filter((a) => a.is_active).length)
           setLatestNews(news.items ? news.items.slice(0, 5) : news.slice(0, 5))
           setUnreadCount(notifications.filter((n) => !n.is_read).length)
           setNewsStats(nStats)
-          setAlertsStats(aStats)
           setWordcloudData(wcloud)
+          setGlobalStats(gStats)
         }
       } catch {
         // widgets are non-critical, fail silently
@@ -132,41 +201,47 @@ export default function DashboardPage() {
   }, [wordcloudCategory])
 
   const newsByCategory = newsStats?.by_category || []
-  const alertsByCategory = alertsStats?.by_category || []
+  const globalNewsByCategory = globalStats?.news_by_category || []
+  const globalAlertsByCategory = globalStats?.alerts_by_category || []
   const availableCategories = newsByCategory.map((c) => c.category)
-
   const userName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || t('dashboard.unknown_user')
 
   return (
     <section className="dashboard-page">
-      {/* ── Row 1: Stat cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-        <article className="panel-card" style={{ textAlign: 'center' }}>
-          <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>{t('dashboard.total_news')}</p>
-          <p style={{ fontSize: '2.2rem', fontWeight: 700, margin: 0 }}>
-            {newsStats === null ? '...' : newsStats.total_news.toLocaleString()}
-          </p>
-          <p className="panel-card__text" style={{ fontSize: '0.8rem' }}>{t('dashboard.total_news_label')}</p>
-        </article>
+      <article className="panel-card" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <div>
+            <p className="eyebrow" style={{ marginBottom: '0.35rem' }}>{t('dashboard.global_eyebrow')}</p>
+            <h2 style={{ margin: 0 }}>{t('dashboard.global_title')}</h2>
+            <p className="panel-card__text" style={{ marginTop: '0.35rem', maxWidth: '56rem' }}>
+              {t('dashboard.global_subtitle')}
+            </p>
+          </div>
+          <div style={{ minWidth: '12rem', textAlign: 'right' }}>
+            <p className="panel-card__text" style={{ marginBottom: '0.2rem' }}>{t('dashboard.media_outlets')}</p>
+            <strong>{formatNumber(globalStats?.total_media_outlets)}</strong>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+          <StatCard eyebrow={t('dashboard.global_sources')} value={globalStats?.total_sources} label={t('dashboard.global_sources_label')} accent="#17324d" />
+          <StatCard eyebrow={t('dashboard.global_news')} value={globalStats?.total_news} label={t('dashboard.total_news_label')} accent="#bb4d00" />
+          <StatCard eyebrow={t('dashboard.global_news_categories')} value={globalNewsByCategory.length} label={t('dashboard.global_news_categories_label')} accent="#2a5478" />
+          <StatCard eyebrow={t('dashboard.global_alerts')} value={globalStats?.total_alerts} label={t('dashboard.global_alerts_label')} accent="#d4742e" />
+          <StatCard eyebrow={t('dashboard.global_alert_categories')} value={globalAlertsByCategory.length} label={t('dashboard.global_alert_categories_label')} accent="#3d6f9e" />
+        </div>
+      </article>
 
-        <article className="panel-card" style={{ textAlign: 'center' }}>
-          <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>{t('dashboard.active_alerts')}</p>
-          <p style={{ fontSize: '2.2rem', fontWeight: 700, margin: 0 }}>
-            {activeAlertsCount === null ? '...' : activeAlertsCount}
-          </p>
-          <p className="panel-card__text" style={{ fontSize: '0.8rem' }}>{t('dashboard.alerts_active')}</p>
-        </article>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+        <CategoryBars title={t('dashboard.global_news_by_category')} data={globalNewsByCategory} countLabel={t('dashboard.news_count')} t={t} />
+        <CategoryBars title={t('dashboard.global_alerts_by_category')} data={globalAlertsByCategory} countLabel={t('dashboard.alerts_count')} t={t} />
+      </div>
 
-        <article className="panel-card" style={{ textAlign: 'center' }}>
-          <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>{t('dashboard.unread_notifications')}</p>
-          <p style={{ fontSize: '2.2rem', fontWeight: 700, margin: 0 }}>
-            {unreadCount === null ? '...' : unreadCount}
-          </p>
-          <p className="panel-card__text" style={{ fontSize: '0.8rem' }}>{t('dashboard.notifications_pending')}</p>
-        </article>
-
-        <article className="panel-card" style={{ textAlign: 'center' }}>
-          <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>{t('dashboard.backend_status')}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+        <StatCard eyebrow={t('dashboard.personal_news')} value={newsStats?.total_news} label={t('dashboard.personal_news_label')} accent="#586579" />
+        <StatCard eyebrow={t('dashboard.active_alerts')} value={activeAlertsCount} label={t('dashboard.alerts_active')} accent="#8c5a2a" />
+        <StatCard eyebrow={t('dashboard.unread_notifications')} value={unreadCount} label={t('dashboard.notifications_pending')} accent="#4a8ac2" />
+        <article className="panel-card" style={{ textAlign: 'center', minHeight: '132px' }}>
+          <p className="eyebrow" style={{ marginBottom: '0.8rem' }}>{t('dashboard.backend_status')}</p>
           {health.status === 'loading' ? <p>...</p> : null}
           {health.status === 'success' ? (
             <span className="status-pill status-pill--ok" style={{ margin: '0 auto' }}>{t('dashboard.backend_reachable')}</span>
@@ -177,71 +252,7 @@ export default function DashboardPage() {
         </article>
       </div>
 
-      {/* ── Row 2: Charts side by side (horizontal bars) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <article className="panel-card">
-          <h2>{t('dashboard.news_by_category')}</h2>
-          {newsByCategory.length === 0 ? (
-            <p className="panel-card__text">{t('dashboard.no_data')}</p>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={Math.max(200, newsByCategory.length * 40)}>
-                <BarChart data={newsByCategory} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="category" width={100} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" name={t('dashboard.news_count')} radius={[0, 6, 6, 0]}>
-                    {newsByCategory.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                {newsByCategory.map((item, i) => (
-                  <div key={item.category} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    <span style={{ color: 'var(--muted)' }}>{item.category}</span>
-                    <span style={{ fontWeight: 700 }}>{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </article>
-
-        <article className="panel-card">
-          <h2>{t('dashboard.alerts_by_category')}</h2>
-          {alertsByCategory.length === 0 ? (
-            <p className="panel-card__text">{t('dashboard.no_data')}</p>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={Math.max(200, alertsByCategory.length * 40)}>
-                <BarChart data={alertsByCategory} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="category" width={100} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" name={t('dashboard.alerts_count')} radius={[0, 6, 6, 0]}>
-                    {alertsByCategory.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                {alertsByCategory.map((item) => (
-                  <div key={item.category} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    <span style={{ color: 'var(--muted)' }}>{item.category}</span>
-                    <span style={{ fontWeight: 700 }}>{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </article>
-      </div>
-
-      {/* ── Row 3: Word cloud + Latest news side by side ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
         <article className="panel-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <h2 style={{ margin: 0 }}>{t('dashboard.wordcloud')}</h2>
@@ -286,7 +297,6 @@ export default function DashboardPage() {
         </article>
       </div>
 
-      {/* ── Row 4: User info compact ── */}
       <article className="panel-card" style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
         <h2 style={{ margin: 0 }}>{t('dashboard.current_user')}</h2>
         <dl style={{ display: 'flex', gap: '2rem', margin: 0, flexWrap: 'wrap' }}>

@@ -16,7 +16,7 @@ Permisos:
 - GET ``/users`` (list): cualquier usuario autenticado (la API oficial no
   exige admin para listar).
 - GET/PUT sobre el propio usuario: cualquier autenticado.
-- DELETE: solo admin.
+- DELETE: admin o el propio usuario.
 """
 
 from typing import List
@@ -186,9 +186,10 @@ def update_user(
 )
 def delete_user(
     user_id: int = Path(..., ge=1),
-    _: User = Depends(_admin_only),
+    current_user: User = Depends(get_current_active_verified_user),
     db: Session = Depends(get_db),
 ):
+    _ensure_self_or_admin(current_user, user_id)
     user = _get_user_or_404(db, user_id)
     db.delete(user)
     db.commit()

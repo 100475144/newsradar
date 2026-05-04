@@ -103,6 +103,14 @@ export default function AppShell() {
           >
             {t('sidebar.nav.notifications')}
           </NavLink>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              isActive ? 'nav-link nav-link--active' : 'nav-link'
+            }
+          >
+            {t('sidebar.nav.profile')}
+          </NavLink>
         </nav>
 
         <div className="profile-card">

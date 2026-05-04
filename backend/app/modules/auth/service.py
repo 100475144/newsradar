@@ -8,7 +8,10 @@ from app.core.security import (
 )
 from app.modules.auth.repository import UserRepository
 from app.modules.auth.schemas import LoginResponse, UserCreate
-from app.modules.notifications.email_utils import send_verification_email
+from app.modules.notifications.email_utils import (
+    send_password_reset_email,
+    send_verification_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +70,39 @@ class AuthService:
                 "Verification email could not be sent to %s (SMTP may not be configured).",
                 user.email,
             )
+        return user
+
+    def request_password_reset(self, email: str) -> None:
+        user = self.repository.get_by_email(email)
+        if user is None:
+            # Do not disclose whether the email exists.
+            return
+        if hasattr(user, "is_active") and not user.is_active:
+            return
+
+        token_obj = self.repository.create_password_reset_token(user.id)
+        email_sent = send_password_reset_email(user.email, token_obj.token)
+        if not email_sent:
+            logger.warning(
+                "Password reset email could not be sent to %s (SMTP may not be configured).",
+                user.email,
+            )
+
+    def reset_password(self, token: str, password: str):
+        token_obj = self.repository.get_password_reset_token(token)
+        if token_obj is None:
+            raise ValueError("Invalid password reset token.")
+
+        if token_obj.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            self.repository.delete_password_reset_token(token_obj)
+            raise ValueError("Password reset token has expired. Please request a new one.")
+
+        user = self.repository.get_by_id(token_obj.user_id)
+        if user is None:
+            raise ValueError("User not found.")
+
+        self.repository.update(user, hashed_password=get_password_hash(password))
+        self.repository.delete_password_reset_token(token_obj)
         return user
 
     def validate_user_credentials(self, email: str, password: str):

@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
@@ -10,7 +12,9 @@ from app.api.deps import (
 from app.modules.auth.models import User
 from app.modules.auth.repository import UserRepository
 from app.modules.auth.schemas import (
+    ForgotPasswordRequest,
     MessageResponse,
+    ResetPasswordRequest,
     Token,
     LoginResponse,
     RegisterResponse,
@@ -29,7 +33,6 @@ def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     """Build the auth service with its database-backed repository."""
     repository = UserRepository(db)
     return AuthService(repository)
-
 
 @router.post(
     "/register",
@@ -87,6 +90,40 @@ def resend_verification(
     try:
         auth_service.resend_verification_email(email)
         return MessageResponse(message="Verification email sent. The link expires in 24 hours.")
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_200_OK,
+)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> MessageResponse:
+    """Send a password reset email when the account exists."""
+    auth_service.request_password_reset(payload.email)
+    return MessageResponse(
+        message="If the email exists, a password reset link has been sent.",
+    )
+
+
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_200_OK,
+)
+def reset_password(
+    payload: ResetPasswordRequest,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
+) -> MessageResponse:
+    """Reset a password using a valid password reset token."""
+    try:
+        auth_service.reset_password(payload.token, payload.password)
+        return MessageResponse(message="Password updated successfully. You can now sign in.")
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
