@@ -80,7 +80,7 @@ Servicios disponibles:
 
 Al arrancar por primera vez:
 - Se ejecutan automáticamente las **migraciones Alembic** (20+).
-- Se crea el **usuario admin** (`admin@newsradar.com` / `Admin1234!`).
+- Se crea el **usuario admin** (`admin@newsradar.com` / `admin123`, mismas credenciales que el seed de la API oficial).
 - Se siembra el **catálogo RSS por defecto** (110 canales en 20 medios cubriendo las 17 categorías IPTC).
 - El **scheduler del crawler** arranca con cron `*/5 * * * *`.
 

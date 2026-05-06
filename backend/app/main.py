@@ -43,9 +43,20 @@ def _seed_admin_user() -> None:
             # Asegurar que el admin tiene el rol "admin" asociado (defensa en
             # profundidad para BBDD pre-existentes).
             admin_role = db.query(Role).filter(Role.name == "admin").first()
+            changed = False
             if admin_role is not None and admin_role not in existing.roles:
                 existing.roles.append(admin_role)
+                changed = True
+            # Reaplicar password configurada si cambió. Esto permite rotar la
+            # contraseña sin tener que borrar la BD: basta con ajustar
+            # ``ADMIN_PASSWORD`` y reiniciar el backend.
+            from app.core.security import verify_password
+            if not verify_password(settings.admin_password, existing.hashed_password):
+                existing.hashed_password = get_password_hash(settings.admin_password)
+                changed = True
+            if changed:
                 db.commit()
+                logger.info("Admin user updated: %s", settings.admin_email)
             return
 
         admin_role = db.query(Role).filter(Role.name == "admin").first()
