@@ -83,6 +83,21 @@ class AlertBase(BaseModel):
         return cleaned
 
 
+# Mensaje de error compartido para descriptores fuera de rango. La spec
+# oficial (smoke GA) exige entre 3 y 10 sinónimos por alerta.
+DESCRIPTOR_COUNT_ERROR = (
+    "descriptors must contain between 3 and 10 unique non-empty terms"
+)
+DESCRIPTOR_MIN = 3
+DESCRIPTOR_MAX = 10
+
+
+def _enforce_descriptor_count(value: List[str]) -> List[str]:
+    if not (DESCRIPTOR_MIN <= len(value) <= DESCRIPTOR_MAX):
+        raise ValueError(DESCRIPTOR_COUNT_ERROR)
+    return value
+
+
 class AlertCreateInternal(AlertBase):
     """Payload interno extendido para crear alertas desde la UI propia.
 
@@ -95,9 +110,19 @@ class AlertCreateInternal(AlertBase):
     notify_in_app: bool = True
     notify_email: bool = False
 
+    @field_validator("descriptors", mode="after")
+    @classmethod
+    def enforce_count(cls, value: List[str]) -> List[str]:
+        return _enforce_descriptor_count(value)
+
 
 class AlertCreate(AlertBase):
     """Payload oficial para POST /users/{user_id}/alerts."""
+
+    @field_validator("descriptors", mode="after")
+    @classmethod
+    def enforce_count(cls, value: List[str]) -> List[str]:
+        return _enforce_descriptor_count(value)
 
 
 class AlertUpdate(BaseModel):
@@ -141,7 +166,8 @@ class AlertUpdate(BaseModel):
                 continue
             seen.add(lowered)
             cleaned.append(term)
-        return cleaned
+        # En update, si se proporciona descriptors debe estar en rango oficial.
+        return _enforce_descriptor_count(cleaned)
 
 
 class AlertResponse(AlertBase):

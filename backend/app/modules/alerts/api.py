@@ -104,13 +104,28 @@ def _ensure_user_access(current_user: User, target_user_id: int) -> None:
         )
 
 
+def _ensure_user_exists(db: Session, target_user_id: int) -> None:
+    """Valida que el usuario destino exista (404 si no, en lugar de 500).
+
+    GA-027 del smoke: crear alerta sobre un user_id inexistente debe devolver
+    404. Sin esta comprobación, la FK fallaría con 500 al hacer commit.
+    """
+    if not db.query(User.id).filter(User.id == target_user_id).first():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {target_user_id} not found.",
+        )
+
+
 @router.get("/{user_id}/alerts", response_model=list[AlertResponse])
 def list_user_alerts(
     user_id: int = Path(..., ge=1),
     current_user: User = Depends(get_current_active_verified_user),
     service: AlertService = Depends(get_alert_service),
+    db: Session = Depends(get_db),
 ):
     _ensure_user_access(current_user, user_id)
+    _ensure_user_exists(db, user_id)
     return service.list_alerts_for_user(user_id)
 
 
@@ -124,8 +139,10 @@ def create_user_alert(
     user_id: int = Path(..., ge=1),
     current_user: User = Depends(_gestor_or_admin),
     service: AlertService = Depends(get_alert_service),
+    db: Session = Depends(get_db),
 ):
     _ensure_user_access(current_user, user_id)
+    _ensure_user_exists(db, user_id)
     return service.create_alert(payload, user_id)
 
 
@@ -135,8 +152,10 @@ def get_user_alert(
     alert_id: int = Path(..., ge=1),
     current_user: User = Depends(get_current_active_verified_user),
     service: AlertService = Depends(get_alert_service),
+    db: Session = Depends(get_db),
 ):
     _ensure_user_access(current_user, user_id)
+    _ensure_user_exists(db, user_id)
     return service.get_alert(alert_id, user_id)
 
 
@@ -147,8 +166,10 @@ def update_user_alert(
     alert_id: int = Path(..., ge=1),
     current_user: User = Depends(_gestor_or_admin),
     service: AlertService = Depends(get_alert_service),
+    db: Session = Depends(get_db),
 ):
     _ensure_user_access(current_user, user_id)
+    _ensure_user_exists(db, user_id)
     return service.update_alert(alert_id, payload, user_id)
 
 
@@ -162,8 +183,10 @@ def delete_user_alert(
     alert_id: int = Path(..., ge=1),
     current_user: User = Depends(_gestor_or_admin),
     service: AlertService = Depends(get_alert_service),
+    db: Session = Depends(get_db),
 ):
     _ensure_user_access(current_user, user_id)
+    _ensure_user_exists(db, user_id)
     service.delete_alert(alert_id, user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
