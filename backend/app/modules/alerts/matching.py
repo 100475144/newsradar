@@ -85,7 +85,12 @@ def _news_matches_alert(
             return False
         if channel_category is None:
             return False
-        if _normalize(channel_category.name) not in alert_codes:
+        # Match por código IPTC oficial (PK string) o por nombre español.
+        candidate_keys = {
+            _normalize(channel_category.id),
+            _normalize(channel_category.name),
+        }
+        if not (candidate_keys & alert_codes):
             return False
 
     haystack = " ".join(

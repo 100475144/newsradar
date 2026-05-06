@@ -95,11 +95,15 @@ def test_matching_news_sends_email_notification_via_mailhog():
         # Asegurar Category IPTC y crear InformationSource + RSSChannel.
         category = (
             db.query(Category)
-            .filter(Category.name == "science_technology")
+            .filter(Category.id == "13000000")
             .first()
         )
         if category is None:
-            category = Category(name="science_technology", source="IPTC")
+            category = Category(
+                id="13000000",
+                name="ciencia y tecnología",
+                source="IPTC",
+            )
             db.add(category)
             db.commit()
             db.refresh(category)
@@ -129,7 +133,7 @@ def test_matching_news_sends_email_notification_via_mailhog():
             name=alert_name,
             keyword="ai",
             descriptors=["machine learning", "neural networks", "automation"],
-            categories=[{"code": "science_technology", "label": "Science and Technology"}],
+            categories=[{"code": "13000000", "label": "ciencia y tecnología"}],
             rss_channels_ids=[str(channel.id)],
             information_sources_ids=[],
             cron_expression="*/5 * * * *",

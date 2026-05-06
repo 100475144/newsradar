@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_verified_user, get_db, require_role
-from app.core.iptc import IPTC_CATEGORY_CODES
+from app.core.iptc import IPTC_CATEGORIES, IPTC_CATEGORY_CODES, to_official_code
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserRole
 from app.modules.sources.models import Category, InformationSource, RSSChannel
@@ -49,7 +49,7 @@ _gestor_or_admin = require_role(UserRole.ADMIN, UserRole.GESTOR)
 categories_router = APIRouter(prefix="/categories", tags=["categories"])
 
 
-def _get_category_or_404(db: Session, category_id: int) -> Category:
+def _get_category_or_404(db: Session, category_id: str) -> Category:
     category = db.query(Category).filter(Category.id == category_id).first()
     if category is None:
         raise HTTPException(
@@ -78,13 +78,24 @@ def create_category(
     db: Session = Depends(get_db),
 ) -> Category:
     name = payload.name.strip()
-    existing = db.query(Category).filter(Category.name == name).first()
+    # Catálogo cerrado IPTC: el código se deriva del nombre español oficial.
+    official_code = to_official_code(name)
+    if official_code not in IPTC_CATEGORIES:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Category name does not match the official IPTC catalog.",
+        )
+    existing = db.query(Category).filter(Category.id == official_code).first()
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A category with this name already exists.",
+            detail="A category with this id already exists.",
         )
-    category = Category(name=name, source=payload.source)
+    category = Category(
+        id=official_code,
+        name=IPTC_CATEGORIES[official_code],
+        source=payload.source,
+    )
     db.add(category)
     db.commit()
     db.refresh(category)
@@ -93,7 +104,7 @@ def create_category(
 
 @categories_router.get("/{category_id}", response_model=CategoryResponse)
 def get_category(
-    category_id: int = Path(..., ge=1),
+    category_id: str = Path(..., min_length=1, max_length=8),
     _: User = Depends(get_current_active_verified_user),
     db: Session = Depends(get_db),
 ) -> Category:
@@ -103,7 +114,7 @@ def get_category(
 @categories_router.put("/{category_id}", response_model=CategoryResponse)
 def update_category(
     payload: CategoryUpdate,
-    category_id: int = Path(..., ge=1),
+    category_id: str = Path(..., min_length=1, max_length=8),
     _: User = Depends(_gestor_or_admin),
     db: Session = Depends(get_db),
 ) -> Category:
@@ -135,7 +146,7 @@ def update_category(
     response_class=Response,
 )
 def delete_category(
-    category_id: int = Path(..., ge=1),
+    category_id: str = Path(..., min_length=1, max_length=8),
     _: User = Depends(_gestor_or_admin),
     db: Session = Depends(get_db),
 ) -> Response:
@@ -187,7 +198,7 @@ def _get_rss_channel_or_404(db: Session, source_id: int, channel_id: int) -> RSS
     return channel
 
 
-def _ensure_category_exists(db: Session, category_id: int) -> Category:
+def _ensure_category_exists(db: Session, category_id: str) -> Category:
     category = db.query(Category).filter(Category.id == category_id).first()
     if category is None:
         raise HTTPException(

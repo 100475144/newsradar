@@ -36,7 +36,10 @@ class Category(Base):
     __tablename__ = "categories"
     __table_args__ = (UniqueConstraint("name", name="uq_categories_name"),)
 
-    id = Column(Integer, primary_key=True, index=True)
+    # ``id`` es el código IPTC oficial de 8 dígitos ("01000000"…"17000000").
+    # Se usa string como PK para que la API exponga el código IPTC tal cual
+    # esperan los smoke tests del aula global (SMOKE-005).
+    id = Column(String(8), primary_key=True, index=True)
     name = Column(String(120), nullable=False)
     source = Column(String(20), nullable=False, default="IPTC")
 
@@ -83,7 +86,7 @@ class RSSChannel(Base):
     id = Column(Integer, primary_key=True, index=True)
     url = Column(String(500), nullable=False, index=True)
     category_id = Column(
-        Integer,
+        String(8),
         ForeignKey("categories.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,

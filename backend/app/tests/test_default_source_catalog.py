@@ -27,7 +27,7 @@ def test_seed_populates_split_tables(db):
     assert len(media) >= 10
 
     covered_codes = {
-        cat.name
+        cat.id
         for cat in db.query(Category)
         .join(RSSChannel, RSSChannel.category_id == Category.id)
         .all()

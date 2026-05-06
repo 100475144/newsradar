@@ -1,7 +1,8 @@
 """Default RSS catalog: 100+ canales en 14+ medios cubriendo las 17 categorías IPTC.
 
 Adaptado al modelo split (T6.3): siembra ``InformationSource`` (medios) y
-``RSSChannel`` (feeds) referenciando ``Category`` por id.
+``RSSChannel`` (feeds) referenciando ``Category`` por id IPTC string
+("01000000"…"17000000").
 """
 
 from __future__ import annotations
@@ -11,11 +12,16 @@ from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
-from app.core.iptc import IPTC_CATEGORY_CODES
+from app.core.iptc import (
+    DEFAULT_FALLBACK_CODE,
+    IPTC_CATEGORIES,
+    IPTC_CATEGORY_CODES,
+    to_official_code,
+)
 from app.modules.sources.models import Category, InformationSource, RSSChannel
 
 
-# Cada tupla: ("Medium - Channel", rss_url, iptc_category_code)
+# Cada tupla: ("Medium - Channel", rss_url, iptc_category_code_legacy_or_official)
 RSS_SEEDS_RAW: list[tuple[str, str, str]] = [
     # BBC
     ("BBC - Top Stories", "https://feeds.bbci.co.uk/news/rss.xml", "society"),
@@ -185,12 +191,17 @@ def get_seed_sources() -> list[dict[str, str]]:
             continue
 
         medium_name, channel_name = _split_seed_name(display_name)
+        # Convertimos el código legacy snake_case al oficial IPTC.
+        official = to_official_code(category)
+        if official not in IPTC_CATEGORIES:
+            official = DEFAULT_FALLBACK_CODE
+
         normalized_sources.append(
             {
                 "medium_name": medium_name,
                 "name": channel_name,
                 "url": normalized_url,
-                "category": category.strip().lower(),
+                "category": official,
             }
         )
         seen_urls.add(normalized_url)
@@ -216,39 +227,45 @@ def get_seed_catalog_summary() -> dict[str, int | bool]:
 def seed_default_sources(db: Session) -> int:
     """Garantiza que el catálogo global de RSS exista (idempotente).
 
-    Crea/usa categorías IPTC, ``InformationSource`` por cada medio y
-    ``RSSChannel`` por cada feed, evitando duplicados por URL.
+    - Inserta las 17 categorías oficiales IPTC con su id (8 dígitos) y nombre
+      español canónico.
+    - Crea/usa ``InformationSource`` por cada medio.
+    - Crea ``RSSChannel`` por cada feed evitando duplicados por URL.
+    - Reasigna canales antiguos vinculados a ``uncategorized`` (si existe)
+      a la categoría por defecto, y borra esa fila legacy.
     """
-    # Cache de categorías por code
-    categories_by_name = {
-        cat.name: cat
-        for cat in db.query(Category).all()
-    }
-    # Asegurar todas las IPTC primer nivel
-    for code in IPTC_CATEGORY_CODES:
-        if code not in categories_by_name:
-            cat = Category(name=code, source="IPTC")
-            db.add(cat)
+    # 1. Asegurar las 17 categorías IPTC con id explícito.
+    for code, label in IPTC_CATEGORIES.items():
+        existing = db.query(Category).filter(Category.id == code).first()
+        if existing is None:
+            db.add(Category(id=code, name=label, source="IPTC"))
+    db.flush()
+
+    # 2. Limpiar la fila legacy ``uncategorized`` si quedó de migraciones
+    #    anteriores: reasignar sus canales y borrarla.
+    legacy = (
+        db.query(Category).filter(Category.name == "uncategorized").first()
+    )
+    if legacy is not None:
+        fallback = (
+            db.query(Category).filter(Category.id == DEFAULT_FALLBACK_CODE).first()
+        )
+        if fallback is not None:
+            db.query(RSSChannel).filter(
+                RSSChannel.category_id == legacy.id
+            ).update({"category_id": fallback.id})
+            db.delete(legacy)
             db.flush()
-            categories_by_name[code] = cat
 
-    # Cache de information sources por nombre
-    media_by_name = {
-        m.name: m
-        for m in db.query(InformationSource).all()
-    }
-
-    existing_channel_urls = {
-        row[0]
-        for row in db.query(RSSChannel.url).all()
-    }
+    # 3. Cache de medios por nombre.
+    media_by_name = {m.name: m for m in db.query(InformationSource).all()}
+    existing_channel_urls = {row[0] for row in db.query(RSSChannel.url).all()}
 
     new_channels = 0
     for seed in get_seed_sources():
         if seed["url"] in existing_channel_urls:
             continue
 
-        # Asegurar el medio
         medium = media_by_name.get(seed["medium_name"])
         if medium is None:
             medium = InformationSource(
@@ -259,18 +276,10 @@ def seed_default_sources(db: Session) -> int:
             db.flush()
             media_by_name[seed["medium_name"]] = medium
 
-        # Categoría
-        category = categories_by_name.get(seed["category"])
-        if category is None:
-            category = Category(name=seed["category"], source="IPTC")
-            db.add(category)
-            db.flush()
-            categories_by_name[seed["category"]] = category
-
         channel = RSSChannel(
             url=seed["url"],
             information_source_id=medium.id,
-            category_id=category.id,
+            category_id=seed["category"],
             name=seed["name"],
             is_active=True,
         )
@@ -284,6 +293,8 @@ def seed_default_sources(db: Session) -> int:
         except Exception:
             db.rollback()
             raise
+    else:
+        db.commit()
 
     return new_channels
 

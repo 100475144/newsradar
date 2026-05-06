@@ -24,10 +24,14 @@ def test_create_news_accepts_long_external_id(db):
     db.refresh(user)
 
     category = (
-        db.query(Category).filter(Category.name == "science_technology").first()
+        db.query(Category).filter(Category.id == "13000000").first()
     )
     if category is None:
-        category = Category(name="science_technology", source="IPTC")
+        category = Category(
+            id="13000000",
+            name="ciencia y tecnología",
+            source="IPTC",
+        )
         db.add(category)
         db.commit()
         db.refresh(category)

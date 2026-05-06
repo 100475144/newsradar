@@ -46,7 +46,9 @@ class CategoryUpdate(BaseModel):
 
 
 class CategoryResponse(CategoryBase):
-    id: int
+    # ``id`` es el código IPTC oficial de 8 dígitos como string
+    # (ej. "13000000"), tal y como esperan los smoke tests del aula global.
+    id: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -101,7 +103,8 @@ class InformationSourceResponse(InformationSourceBase):
 
 class RSSChannelBase(BaseModel):
     url: HttpUrl
-    category_id: int
+    # ``category_id`` es el código IPTC string (ej. "13000000").
+    category_id: str = Field(..., min_length=1, max_length=8)
 
 
 class RSSChannelCreate(RSSChannelBase):
@@ -110,7 +113,7 @@ class RSSChannelCreate(RSSChannelBase):
 
 class RSSChannelUpdate(BaseModel):
     url: Optional[HttpUrl] = None
-    category_id: Optional[int] = None
+    category_id: Optional[str] = Field(default=None, min_length=1, max_length=8)
 
 
 class RSSChannelResponse(RSSChannelBase):

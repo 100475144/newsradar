@@ -9,15 +9,11 @@ from app.tests.helpers import auth_headers_for, create_test_user
 def test_categories_endpoint_lists_seeded_iptc(client, db):
     # Sembramos 17 IPTC primer nivel manualmente (el lifespan de la app no
     # corre en tests con BD efímera).
-    iptc_codes = [
-        "arts_culture_entertainment", "conflict_war_peace", "crime_law_justice",
-        "disaster_accident", "economy_business_finance", "education", "environment",
-        "health", "human_interest", "labour", "lifestyle_leisure", "politics",
-        "religion_belief", "science_technology", "society", "sport", "weather",
-    ]
-    for code in iptc_codes:
-        if not db.query(Category).filter(Category.name == code).first():
-            db.add(Category(name=code, source="IPTC"))
+    from app.core.iptc import IPTC_CATEGORIES
+
+    for code, label in IPTC_CATEGORIES.items():
+        if not db.query(Category).filter(Category.id == code).first():
+            db.add(Category(id=code, name=label, source="IPTC"))
     db.commit()
 
     user = create_test_user(db, email="cat-list@example.com")
@@ -26,8 +22,8 @@ def test_categories_endpoint_lists_seeded_iptc(client, db):
     response = client.get("/api/v1/categories", headers=headers)
     assert response.status_code == 200
     body = response.json()
-    names = {item["name"] for item in body}
-    assert set(iptc_codes).issubset(names)
+    ids = {item["id"] for item in body}
+    assert set(IPTC_CATEGORIES.keys()).issubset(ids)
 
 
 def test_information_source_crud_round_trip(client, db):
@@ -68,10 +64,10 @@ def test_nested_rss_channel_crud(client, db):
     user = create_test_user(db, email="rss-crud@example.com")
     headers = auth_headers_for(client, user.email)
 
-    # Asegurar categoría disponible.
-    cat = db.query(Category).filter(Category.name == "science_technology").first()
+    # Asegurar categoría disponible (IPTC ciencia y tecnología).
+    cat = db.query(Category).filter(Category.id == "13000000").first()
     if cat is None:
-        cat = Category(name="science_technology", source="IPTC")
+        cat = Category(id="13000000", name="ciencia y tecnología", source="IPTC")
         db.add(cat)
         db.commit()
         db.refresh(cat)

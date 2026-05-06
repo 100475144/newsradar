@@ -206,7 +206,7 @@ export default function SourcesPage() {
       const sourceId = Number(formData.information_source_id)
       const payload = {
         url: formData.url,
-        category_id: Number(formData.category_id),
+        category_id: String(formData.category_id),
       }
       if (editing) {
         await updateRssChannel(editing.medium.id, editing.id, payload)
