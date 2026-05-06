@@ -34,7 +34,11 @@ class Settings(BaseSettings):
 
     # Admin seed
     admin_email: str = Field(default="admin@newsradar.com")
-    admin_password: str = Field(default="Admin1234!")
+    # Mismo valor que el seed del ``main.py`` oficial del aula global,
+    # para que la batería de smoke tests del profesor pueda hacer
+    # ``/auth/login`` con las credenciales esperadas. Sobrescribir vía
+    # variable de entorno ``ADMIN_PASSWORD`` en producción.
+    admin_password: str = Field(default="admin123")
     admin_first_name: str = Field(default="Admin")
     admin_last_name: str = Field(default="NewsRadar")
 

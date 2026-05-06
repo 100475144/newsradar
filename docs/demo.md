@@ -19,7 +19,7 @@ Confirma que los servicios quedan arriba:
 
 En la UI, inicia sesion con:
 - Email: admin@newsradar.com
-- Password: la definida en entorno (por defecto: Admin1234!)
+- Password: la definida en entorno (por defecto: `admin123`, igual que el seed del `main.py` oficial)
 
 Si no funciona, verifica variables `ADMIN_EMAIL` y `ADMIN_PASSWORD` en el backend.
 
