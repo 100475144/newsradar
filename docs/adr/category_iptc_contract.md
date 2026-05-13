@@ -86,9 +86,24 @@ reiniciar, diverge entre workers) y semánticamente confusa.
 | **GC-001** | OK | POST idempotente devuelve 201 con la fila canónica (D2). |
 | **GC-022** | OK | 17 categorías sembradas siempre. |
 
+## Confirmación del profesor (14/05/2026)
+
+Tras consultarlo por correo, el profesor confirma:
+
+* **GC-009 / GC-010**: *"Me parece bien el catálogo cerrado, cambia la
+  aserción o simplemente déjalo documentado. Esto se admite."* → mantenemos
+  el contrato idempotente y el caso queda admitido como NOK justificado.
+* **SMOKE-005**: bug del verificador. Aplicar el patch indicado en
+  `tests/test_smoke_scope.py` (líneas 192 y 215, además del ajuste en
+  `_extract_iptc_code` para aceptar enteros) lo arregla.
+* **GC-008**: el verificador vacía el catálogo y envía pares (name, id)
+  inconsistentes. Hemos añadido validación en `POST /categories`: si el
+  cliente envía un `id` que no coincide con el `id` canónico derivado del
+  `name`, respondemos 400.
+
 ## Coste asumido y razón
 
-Aceptamos 4 NOK (SMOKE-005, GC-008, GC-009, GC-010) a cambio de:
+Mantenemos GC-009 y GC-010 como NOK admitidos por el profesor a cambio de:
 * Código sin estado en memoria global.
 * Contrato REST coherente y defendible.
 * Sin "trucos" para satisfacer expectativas contradictorias del verificador.

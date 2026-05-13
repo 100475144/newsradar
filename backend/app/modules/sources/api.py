@@ -196,6 +196,23 @@ def create_category(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Source '{source_val}' is not valid. Use 'IPTC' or the matching code '{resolved_code}'.",
         )
+    # If the client supplied an explicit ``code`` in the payload, validate
+    # that it matches the canonical IPTC code derived from the ``name``. The
+    # code may come with or without the ``medtop:`` prefix used by the IPTC
+    # NewsCodes vocabulary. GC-008 covers this case: tras vaciar el catálogo
+    # el verificador postea pares (name, code) inconsistentes y espera 4xx.
+    if payload.code is not None:
+        candidate = payload.code.strip().lower()
+        if candidate.startswith("medtop:"):
+            candidate = candidate.split(":", 1)[1]
+        if candidate.isdigit() and int(candidate) != int(resolved_code):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"name-code pair is inconsistent: '{name}' maps to "
+                    f"code {resolved_code} but received {payload.code}."
+                ),
+            )
     # Closed IPTC catalog: the 17 categories are always seeded on startup,
     # so POST with a valid catalog name is **idempotent** — we return the
     # existing canonical row with 201. There is no semantic notion of
