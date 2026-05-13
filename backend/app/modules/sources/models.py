@@ -36,11 +36,11 @@ class Category(Base):
     __tablename__ = "categories"
     __table_args__ = (UniqueConstraint("name", name="uq_categories_name"),)
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=False, index=True)
     name = Column(String(120), nullable=False)
-    source = Column(String(20), nullable=False, default="IPTC")
+    source = Column(String(60), nullable=False, default="IPTC")
 
-    rss_channels = relationship("RSSChannel", back_populates="category")
+    rss_channels = relationship("RSSChannel", back_populates="category", passive_deletes=True)
 
 
 class InformationSource(Base):
@@ -84,7 +84,7 @@ class RSSChannel(Base):
     url = Column(String(500), nullable=False, index=True)
     category_id = Column(
         Integer,
-        ForeignKey("categories.id", ondelete="RESTRICT"),
+        ForeignKey("categories.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

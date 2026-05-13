@@ -97,19 +97,25 @@ def create_alert_notification(
     alert_service: AlertService = Depends(get_alert_service),
     notification_service: NotificationService = Depends(get_notification_service),
 ):
-    # Verificar acceso/ownership de la alerta antes de denegar.
-    _get_owned_alert(user_id, alert_id, current_user, alert_service)
-    # Crear notificación canónica desligada de news: como nuestra UI necesita
-    # title/message obligatorios, autogeneramos placeholders cuando se crea
-    # vía endpoint canónico. ``news_id`` se requiere por unicidad lógica;
-    # usamos 0 cuando no hay news asociada — se considera placeholder.
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=(
-            "Notifications are generated automatically by the matching engine. "
-            "POST is exposed for contract compliance only."
-        ),
+    alert = _get_owned_alert(user_id, alert_id, current_user, alert_service)
+    from app.modules.notifications.service import _normalize_metrics
+    from datetime import datetime, timezone
+
+    metrics = _normalize_metrics(payload.metrics) if payload.metrics else []
+    ts = payload.timestamp or datetime.now(timezone.utc)
+    title = f"Notification for alert {alert.name}"
+    message = f"Manual notification created at {ts.isoformat()}"
+
+    notification = notification_service.repository.create(
+        title=title,
+        message=message,
+        user_id=user_id,
+        alert_id=alert_id,
+        news_id=None,
+        timestamp=ts,
+        metrics=metrics,
     )
+    return notification
 
 
 @router.get(

@@ -5,7 +5,7 @@ Alineados con la API oficial proporcionada por el profesor.
 
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 class CategoryBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
-    source: str = Field(default="IPTC", pattern="^IPTC$")
+    source: str = Field(..., min_length=1)
 
     @field_validator("name")
     @classmethod
@@ -32,7 +32,7 @@ class CategoryCreate(CategoryBase):
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
-    source: Optional[str] = Field(default=None, pattern="^IPTC$")
+    source: Optional[str] = Field(default=None)
 
     @field_validator("name")
     @classmethod
@@ -45,10 +45,20 @@ class CategoryUpdate(BaseModel):
         return value
 
 
-class CategoryResponse(CategoryBase):
+class CategoryResponse(BaseModel):
     id: int
+    name: str
+    source: str
+    code: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def _compute_code(self):
+        """Derive the 8-digit IPTC code from the integer id (e.g. 1000000 → '01000000')."""
+        if self.code is None and isinstance(self.id, int):
+            self.code = str(self.id).zfill(8)
+        return self
 
 
 # ─────────────────────────────────────────────────────────────────────

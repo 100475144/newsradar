@@ -36,21 +36,48 @@ def _get_stats_or_404(db: Session, stats_id: int) -> Stats:
 
 def _normalize_metrics(metrics) -> list[dict]:
     cleaned: list[dict] = []
+    seen_names: set[str] = set()
     for entry in metrics or []:
         if hasattr(entry, "model_dump"):
             data = entry.model_dump()
         elif isinstance(entry, dict):
             data = entry
         else:
-            continue
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Each metric must be an object with 'name' and 'value'.",
+            )
         name = (data.get("name") or "").strip()
         value = data.get("value")
-        if not name or value is None:
-            continue
+        if not name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Metric name cannot be empty.",
+            )
+        if value is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Metric '{name}' must have a numeric value.",
+            )
+        if len(name) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Metric name must not exceed 100 characters.",
+            )
         try:
             value = float(value)
         except (TypeError, ValueError):
-            continue
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Metric '{name}' value must be numeric.",
+            )
+        name_lower = name.lower()
+        if name_lower in seen_names:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Duplicate metric name: '{name}'.",
+            )
+        seen_names.add(name_lower)
         cleaned.append({"name": name, "value": value})
     return cleaned
 

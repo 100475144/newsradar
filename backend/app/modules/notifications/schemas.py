@@ -31,7 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class Metric(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=90)
     value: float
 
 
@@ -41,7 +41,7 @@ class Metric(BaseModel):
 
 
 class NotificationBase(BaseModel):
-    timestamp: datetime
+    timestamp: Optional[datetime] = None
     metrics: List[Metric] = Field(default_factory=list)
 
 
@@ -74,7 +74,7 @@ class NotificationDetailResponse(BaseModel):
     timestamp: datetime
     metrics: List[Metric] = Field(default_factory=list)
     user_id: int
-    news_id: int
+    news_id: Optional[int] = None
     title: str
     message: str
     is_read: bool

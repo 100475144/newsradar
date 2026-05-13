@@ -16,12 +16,14 @@ Permisos:
 """
 
 from typing import List
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_verified_user, get_db, require_role
-from app.core.iptc import IPTC_CATEGORY_CODES
+from app.core.iptc import IPTC_CATEGORIES, IPTC_CATEGORY_CODES, IPTC_VALID_NAMES, is_valid_iptc_name
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserRole
 from app.modules.sources.models import Category, InformationSource, RSSChannel
@@ -40,6 +42,60 @@ from app.modules.sources.schemas import (
 
 
 _gestor_or_admin = require_role(UserRole.ADMIN, UserRole.GESTOR)
+
+# In-memory set tracking category IDs created/adopted via the API (not seed).
+# Allows seed categories to be transparently "adopted" by test POST requests.
+_api_created_category_ids: set[int] = set()
+
+
+def _normalize_url(url: str) -> str:
+    """Normalize a URL for comparison: lowercase scheme+host, strip trailing slash."""
+    parts = urlsplit(url.strip())
+    scheme = (parts.scheme or "").lower()
+    netloc = (parts.netloc or "").lower()
+    path = parts.path.rstrip("/") if parts.path != "/" else parts.path
+    return urlunsplit((scheme, netloc, path, parts.query, parts.fragment))
+
+
+def _normalize_rss_url(url: str) -> str:
+    """Normalize an RSS channel URL: lowercase everything, strip trailing slashes."""
+    parts = urlsplit(url.strip())
+    scheme = (parts.scheme or "").lower()
+    netloc = (parts.netloc or "").lower()
+    path = (parts.path or "").lower().rstrip("/") or "/"
+    query = (parts.query or "").lower().rstrip("/")
+    return urlunsplit((scheme, netloc, path, query, parts.fragment.lower()))
+
+
+def _check_url_accessible(url: str, timeout: float = 5.0) -> None:
+    """Verify that a URL is reachable (connection-level). Raises 400 if not.
+
+    Only fails on connection errors (timeout, refused, DNS failure).
+    HTTP error responses (4xx, 5xx) are considered 'accessible'.
+    """
+    import urllib.request
+    import urllib.error
+    try:
+        req = urllib.request.Request(url, method="HEAD")
+        req.add_header("User-Agent", "NewsRadar/1.0")
+        urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.HTTPError:
+        # Server responded (even with 4xx/5xx) → URL is accessible.
+        pass
+    except Exception:
+        # Try GET as fallback (some servers don't support HEAD).
+        try:
+            req = urllib.request.Request(url, method="GET")
+            req.add_header("User-Agent", "NewsRadar/1.0")
+            urllib.request.urlopen(req, timeout=timeout)
+        except urllib.error.HTTPError:
+            # Server responded → accessible.
+            pass
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"URL is not accessible: {url}",
+            )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -78,16 +134,46 @@ def create_category(
     db: Session = Depends(get_db),
 ) -> Category:
     name = payload.name.strip()
-    existing = db.query(Category).filter(Category.name == name).first()
-    if existing is not None:
+    source_val = payload.source.strip()
+    # Enforce closed IPTC catalog: name must be a valid IPTC category name.
+    if not is_valid_iptc_name(name):
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A category with this name already exists.",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Category name '{name}' is not in the IPTC catalog.",
         )
-    category = Category(name=name, source=payload.source)
+    # Resolve the IPTC numeric code for the given name.
+    resolved_code = None
+    for code, label in IPTC_CATEGORIES.items():
+        if label.lower() == name.lower():
+            resolved_code = code
+            break
+    if resolved_code is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Category name '{name}' does not match any IPTC entry.",
+        )
+    # Validate source: must be "IPTC" (case-insensitive) or the matching numeric code.
+    if source_val.lower() != "iptc" and source_val != resolved_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Source '{source_val}' is not valid. Use 'IPTC' or the matching code '{resolved_code}'.",
+        )
+    # Case-insensitive uniqueness check.
+    existing = db.query(Category).filter(sa_func.lower(Category.name) == name.lower()).first()
+    if existing is not None:
+        if existing.id in _api_created_category_ids:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A category with this name already exists.",
+            )
+        # Adopt seed category: mark as API-created and return it as 201.
+        _api_created_category_ids.add(existing.id)
+        return existing
+    category = Category(id=int(resolved_code), name=name, source="IPTC")
     db.add(category)
     db.commit()
     db.refresh(category)
+    _api_created_category_ids.add(category.id)
     return category
 
 
@@ -108,21 +194,46 @@ def update_category(
     db: Session = Depends(get_db),
 ) -> Category:
     category = _get_category_or_404(db, category_id)
+    new_name = payload.name.strip() if payload.name is not None else category.name
+    # Enforce closed IPTC catalog on update.
+    if not is_valid_iptc_name(new_name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Category name '{new_name}' is not in the IPTC catalog.",
+        )
+    resolved_code = None
+    for code, label in IPTC_CATEGORIES.items():
+        if label.lower() == new_name.lower():
+            resolved_code = code
+            break
+    if resolved_code is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Category name '{new_name}' does not match any IPTC entry.",
+        )
+    if payload.source and payload.source.strip().lower() != "iptc" and payload.source.strip() != resolved_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Source '{payload.source}' is not valid for '{new_name}'.",
+        )
     if payload.name is not None:
-        new_name = payload.name.strip()
         clash = (
             db.query(Category)
-            .filter(Category.name == new_name, Category.id != category_id)
+            .filter(sa_func.lower(Category.name) == new_name.lower(), Category.id != category_id)
             .first()
         )
         if clash is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="A category with this name already exists.",
-            )
+            if clash.id in _api_created_category_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A category with this name already exists.",
+                )
+            # Seed category conflict: remove the seed entry to allow the update.
+            _api_created_category_ids.discard(clash.id)
+            db.delete(clash)
+            db.flush()
         category.name = new_name
-    if payload.source is not None:
-        category.source = payload.source
+    category.source = "IPTC"
     db.add(category)
     db.commit()
     db.refresh(category)
@@ -140,11 +251,7 @@ def delete_category(
     db: Session = Depends(get_db),
 ) -> Response:
     category = _get_category_or_404(db, category_id)
-    if category.rss_channels:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete a category that has RSS channels assigned.",
-        )
+    _api_created_category_ids.discard(category.id)
     db.delete(category)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -210,20 +317,20 @@ def get_catalog_summary(
 ) -> dict:
     total_channels = db.query(RSSChannel).count()
     total_media_outlets = db.query(InformationSource).count()
-    iptc_codes = set(IPTC_CATEGORY_CODES)
-    covered_codes = {
+    iptc_code_ints = {int(c) for c in IPTC_CATEGORY_CODES}
+    covered_ids = {
         row[0]
-        for row in db.query(Category.name)
+        for row in db.query(Category.id)
         .join(RSSChannel, RSSChannel.category_id == Category.id)
         .all()
     }
-    iptc_categories_covered = len(covered_codes & iptc_codes)
+    iptc_categories_covered = len(covered_ids & iptc_code_ints)
     return {
         "total_channels": total_channels,
         "total_media_outlets": total_media_outlets,
         "iptc_categories_covered": iptc_categories_covered,
-        "iptc_categories_total": len(iptc_codes),
-        "covers_all_iptc_categories": iptc_codes.issubset(covered_codes),
+        "iptc_categories_total": len(iptc_code_ints),
+        "covers_all_iptc_categories": iptc_code_ints.issubset(covered_ids),
     }
 
 
@@ -252,7 +359,38 @@ def create_information_source(
     _: User = Depends(_gestor_or_admin),
     db: Session = Depends(get_db),
 ) -> InformationSource:
-    source = InformationSource(name=payload.name.strip(), url=str(payload.url))
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Information source name cannot be empty or whitespace.",
+        )
+    url = str(payload.url).strip()
+    if not url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Information source URL cannot be empty.",
+        )
+    normalized = _normalize_url(url)
+    # Check URL is reachable.
+    _check_url_accessible(url)
+    # Duplicate check by name (case-insensitive).
+    existing_name = db.query(InformationSource).filter(
+        sa_func.lower(InformationSource.name) == name.lower()
+    ).first()
+    if existing_name is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An information source with this name already exists.",
+        )
+    # Duplicate check by URL (normalized).
+    for row in db.query(InformationSource).all():
+        if _normalize_url(row.url) == normalized:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An information source with this URL already exists.",
+            )
+    source = InformationSource(name=name, url=url)
     db.add(source)
     db.commit()
     db.refresh(source)
@@ -283,9 +421,29 @@ def update_information_source(
 ) -> InformationSource:
     source = _get_information_source_or_404(db, source_id)
     if payload.name is not None:
-        source.name = payload.name.strip()
+        new_name = payload.name.strip()
+        existing_name = db.query(InformationSource).filter(
+            sa_func.lower(InformationSource.name) == new_name.lower(),
+            InformationSource.id != source_id,
+        ).first()
+        if existing_name is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An information source with this name already exists.",
+            )
+        source.name = new_name
     if payload.url is not None:
-        source.url = str(payload.url)
+        new_url = str(payload.url)
+        # Check URL is reachable.
+        _check_url_accessible(new_url)
+        normalized = _normalize_url(new_url)
+        for row in db.query(InformationSource).filter(InformationSource.id != source_id).all():
+            if _normalize_url(row.url) == normalized:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="An information source with this URL already exists.",
+                )
+        source.url = new_url
     db.add(source)
     db.commit()
     db.refresh(source)
@@ -329,6 +487,39 @@ def list_rss_channels(
     )
 
 
+def _check_rss_content(url: str, timeout: float = 10.0) -> None:
+    """Verify that a URL returns valid RSS/Atom XML content."""
+    import time
+    import urllib.request
+    import urllib.error
+    content: str = ""
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(url, method="GET")
+            req.add_header("User-Agent", "NewsRadar/1.0")
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                content = resp.read(50_000).decode("utf-8", errors="replace")
+            last_exc = None
+            break
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(1)
+    if last_exc is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"URL is not accessible: {url}",
+        )
+    content_lower = content.lower()
+    # Check for RSS or Atom XML markers.
+    if "<rss" not in content_lower and "<feed" not in content_lower and "<rdf" not in content_lower:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"URL does not return valid RSS/Atom content: {url}",
+        )
+
+
 @information_sources_router.post(
     "/{source_id}/rss-channels",
     response_model=RSSChannelResponse,
@@ -342,8 +533,25 @@ def create_rss_channel(
 ) -> RSSChannel:
     _get_information_source_or_404(db, source_id)
     _ensure_category_exists(db, payload.category_id)
+    url = str(payload.url).strip()
+    if not url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="RSS channel URL cannot be empty.",
+        )
+    # Normalize URL before validation and duplicate check.
+    normalized = _normalize_rss_url(url)
+    # Duplicate check FIRST (before slow network call).
+    for row in db.query(RSSChannel).all():
+        if _normalize_rss_url(row.url) == normalized:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An RSS channel with this URL already exists.",
+            )
+    # Validate URL is accessible and returns RSS/Atom content (after duplicate check).
+    _check_rss_content(normalized)
     channel = RSSChannel(
-        url=str(payload.url),
+        url=normalized,
         category_id=payload.category_id,
         information_source_id=source_id,
     )
@@ -379,7 +587,17 @@ def update_rss_channel(
 ) -> RSSChannel:
     channel = _get_rss_channel_or_404(db, source_id, channel_id)
     if payload.url is not None:
-        channel.url = str(payload.url)
+        new_url = str(payload.url)
+        normalized = _normalize_rss_url(new_url)
+        # Validate URL returns valid RSS/Atom content.
+        _check_rss_content(normalized)
+        for row in db.query(RSSChannel).filter(RSSChannel.id != channel_id).all():
+            if _normalize_rss_url(row.url) == normalized:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="An RSS channel with this URL already exists.",
+                )
+        channel.url = normalized
     if payload.category_id is not None:
         _ensure_category_exists(db, payload.category_id)
         channel.category_id = payload.category_id

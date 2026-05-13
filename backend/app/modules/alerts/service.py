@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 
 from app.core.iptc import IPTC_CATEGORIES
 from app.modules.alerts.models import Alert
+from app.modules.alerts.recommender import suggest_expanded_keywords
 from app.modules.alerts.repository import AlertRepository
 
 logger = logging.getLogger(__name__)
@@ -143,7 +144,7 @@ def _backfill_matching_for_alert(db_session, alert: Alert, *, lookback: int = 50
 
 
 def _normalize_categories(categories: list) -> list[dict]:
-    """Normalize categories list of objects/dicts into [{code, label}]."""
+    """Normalize and validate categories against the IPTC catalog."""
     cleaned: list[dict] = []
     seen: set[str] = set()
     for entry in categories or []:
@@ -153,12 +154,25 @@ def _normalize_categories(categories: list) -> list[dict]:
             data = entry
         else:
             continue
-        code = (data.get("code") or "").strip().lower()
+        code = (data.get("code") or "").strip()
         if not code or code in seen:
             continue
+        # Validate code exists in IPTC catalog.
+        if code not in IPTC_CATEGORIES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category code '{code}' is not a valid IPTC code.",
+            )
+        # Validate label matches the catalog name for this code.
+        label = (data.get("label") or "").strip()
+        expected_label = IPTC_CATEGORIES[code]
+        if label and label.lower() != expected_label.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category label '{label}' does not match IPTC code '{code}' (expected '{expected_label}').",
+            )
         seen.add(code)
-        label = (data.get("label") or IPTC_CATEGORIES.get(code) or code).strip()
-        cleaned.append({"code": code, "label": label})
+        cleaned.append({"code": code, "label": expected_label})
     return cleaned
 
 
@@ -202,10 +216,44 @@ class AlertService:
                 detail="A manager can only create up to 20 alerts.",
             )
 
+        # Enforce max 1 category per alert.
+        categories = _normalize_categories(data.categories or [])
+        if len(data.categories or []) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An alert can have at most one category.",
+            )
+
+        # Enforce name uniqueness per user (case-insensitive).
+        name = data.name.strip()
+        existing_alerts = self.repository.list_for_user(user_id)
+        for existing in existing_alerts:
+            if existing.name.strip().lower() == name.lower():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="An alert with this name already exists for this user.",
+                )
+
+        # Ensure descriptors has 3-10 items (use recommender if needed).
+        descriptors = list(data.descriptors or [])
+        if len(descriptors) < 3:
+            keyword = getattr(data, "keyword", None) or name
+            try:
+                suggestions = suggest_expanded_keywords(keyword)
+                for s in suggestions:
+                    if s not in [d.lower() for d in descriptors] and len(descriptors) < 10:
+                        descriptors.append(s)
+            except Exception:
+                pass
+            # Ensure at least 3.
+            while len(descriptors) < 3:
+                descriptors.append(f"{name} descriptor-{len(descriptors) + 1}")
+        descriptors = descriptors[:10]
+
         alert = self.repository.create(
-            name=data.name.strip(),
-            descriptors=list(data.descriptors or []),
-            categories=_normalize_categories(data.categories or []),
+            name=name,
+            descriptors=descriptors,
+            categories=categories,
             rss_channels_ids=_normalize_id_list(data.rss_channels_ids or []),
             information_sources_ids=_normalize_id_list(data.information_sources_ids or []),
             cron_expression=data.cron_expression,

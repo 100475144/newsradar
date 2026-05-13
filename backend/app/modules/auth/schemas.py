@@ -37,6 +37,14 @@ class UserBase(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("This field cannot be empty or blank.")
+        # Reject HTML/script tags (XSS prevention).
+        import re
+        if re.search(r"<\s*script", value, re.IGNORECASE):
+            raise ValueError("HTML script tags are not allowed.")
+        # Sanitize: strip any HTML tags.
+        value = re.sub(r"<[^>]*>", "", value).strip()
+        if not value:
+            raise ValueError("This field cannot be empty after sanitization.")
         return value
 
     @field_validator("organization")
@@ -51,6 +59,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     # Min 6 caracteres como exige la API oficial.
     password: str = Field(..., min_length=6, max_length=128)
+    role_ids: Optional[List[int]] = None
 
     @field_validator("password")
     @classmethod
@@ -135,7 +144,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: int
-    role: UserRole = UserRole.GESTOR
+    role: str = UserRole.GESTOR.value
     role_ids: List[int] = Field(default_factory=list)
     is_active: bool = True
     is_verified: bool = False
@@ -149,7 +158,7 @@ class UserResponse(UserBase):
 
 
 class RoleBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=90)
 
 
 class RoleCreate(RoleBase):
@@ -157,7 +166,7 @@ class RoleCreate(RoleBase):
 
 
 class RoleUpdate(BaseModel):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=90)
 
 
 class RoleResponse(RoleBase):

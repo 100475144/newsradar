@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { verifyEmail } from '../api/authApi'
 
@@ -11,37 +11,29 @@ export default function VerifyEmailPage() {
   const [message, setMessage] = useState(() =>
     token ? '' : 'This verification link is invalid or incomplete.',
   )
+  const calledRef = useRef(false)
 
   useEffect(() => {
-    let ignore = false
+    if (!token || calledRef.current) {
+      return
+    }
+    calledRef.current = true
 
     async function confirmEmail() {
-      if (!token) {
-        return
-      }
-
       try {
         const response = await verifyEmail(token)
 
-        if (!ignore) {
-          setStatus('success')
-          setMessage(
-            response.message || 'Email verified successfully. You can now sign in.',
-          )
-        }
+        setStatus('success')
+        setMessage(
+          response.message || 'Email verified successfully. You can now sign in.',
+        )
       } catch (error) {
-        if (!ignore) {
-          setStatus('error')
-          setMessage(error.message || 'Unable to verify this email link.')
-        }
+        setStatus('error')
+        setMessage(error.message || 'Unable to verify this email link.')
       }
     }
 
     confirmEmail()
-
-    return () => {
-      ignore = true
-    }
   }, [token])
 
   return (

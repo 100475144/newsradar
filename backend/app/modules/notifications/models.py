@@ -35,6 +35,7 @@ class Notification(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "alert_id", "news_id", name="uq_notification_user_alert_news"),
     )
+    # Note: news_id is nullable for API-created notifications (no associated news).
 
     id = Column(Integer, primary_key=True, index=True)
 
@@ -49,7 +50,7 @@ class Notification(Base):
     # FKs.
     alert_id = Column(Integer, ForeignKey("alerts.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False, index=True)
+    news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Campos internos (no en API oficial pero usados por la UI).
     title = Column(String(255), nullable=False)

@@ -18,15 +18,16 @@ class NotificationRepository:
         message: str,
         user_id: int,
         alert_id: int,
-        news_id: int,
+        news_id: int | None = None,
         timestamp: datetime | None = None,
         metrics: list[dict] | None = None,
     ) -> Notification:
-        existing = self.get_by_delivery_key(
-            user_id=user_id, alert_id=alert_id, news_id=news_id
-        )
-        if existing:
-            return existing
+        if news_id is not None:
+            existing = self.get_by_delivery_key(
+                user_id=user_id, alert_id=alert_id, news_id=news_id
+            )
+            if existing:
+                return existing
 
         notification = Notification(
             title=title,

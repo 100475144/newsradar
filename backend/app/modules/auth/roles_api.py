@@ -15,7 +15,10 @@ Permisos:
   cumplimiento estricto del contrato.
 """
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_verified_user, get_db
@@ -54,7 +57,22 @@ def create_role(
     db: Session = Depends(get_db),
 ) -> Role:
     name = payload.name.strip()
-    existing = db.query(Role).filter(Role.name == name).first()
+    if not name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role name cannot be empty or whitespace.",
+        )
+    if len(name) > 90:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role name must not exceed 90 characters.",
+        )
+    if not re.match(r'^[\w \t-]+$', name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role name contains invalid characters. Only alphanumeric characters, spaces, hyphens and underscores are allowed.",
+        )
+    existing = db.query(Role).filter(sa_func.lower(Role.name) == name.lower()).first()
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -88,7 +106,7 @@ def update_role(
         new_name = payload.name.strip()
         clash = (
             db.query(Role)
-            .filter(Role.name == new_name, Role.id != role_id)
+            .filter(sa_func.lower(Role.name) == new_name.lower(), Role.id != role_id)
             .first()
         )
         if clash is not None:

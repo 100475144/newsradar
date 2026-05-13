@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
-from app.core.iptc import IPTC_CATEGORY_CODES
+from app.core.iptc import IPTC_CATEGORIES, IPTC_CATEGORY_CODES, legacy_code_to_iptc
 from app.modules.sources.models import Category, InformationSource, RSSChannel
 
 
@@ -190,7 +190,7 @@ def get_seed_sources() -> list[dict[str, str]]:
                 "medium_name": medium_name,
                 "name": channel_name,
                 "url": normalized_url,
-                "category": category.strip().lower(),
+                "category": legacy_code_to_iptc(category.strip().lower()),
             }
         )
         seen_urls.add(normalized_url)
@@ -219,18 +219,30 @@ def seed_default_sources(db: Session) -> int:
     Crea/usa categorías IPTC, ``InformationSource`` por cada medio y
     ``RSSChannel`` por cada feed, evitando duplicados por URL.
     """
+    # Remove legacy categories seeded by the initial migration with autoincrement
+    # IDs and English code names (e.g. "arts_culture_entertainment" with id=1).
+    # The proper IPTC categories have id=int(code) like 1000000.
+    iptc_id_set = {int(c) for c in IPTC_CATEGORY_CODES}
+    for legacy_cat in db.query(Category).all():
+        if legacy_cat.id not in iptc_id_set:
+            db.delete(legacy_cat)
+    db.flush()
+
     # Cache de categorías por code
     categories_by_name = {
         cat.name: cat
         for cat in db.query(Category).all()
     }
-    # Asegurar todas las IPTC primer nivel
+    # Asegurar todas las IPTC primer nivel (id = int(code), name = Spanish label, source = "IPTC")
     for code in IPTC_CATEGORY_CODES:
-        if code not in categories_by_name:
-            cat = Category(name=code, source="IPTC")
+        label = IPTC_CATEGORIES[code]
+        if label not in categories_by_name:
+            cat = Category(id=int(code), name=label, source="IPTC")
             db.add(cat)
             db.flush()
-            categories_by_name[code] = cat
+            categories_by_name[label] = cat
+        # Also index by numeric code for seed lookup
+        categories_by_name[code] = categories_by_name[label]
 
     # Cache de information sources por nombre
     media_by_name = {
@@ -259,10 +271,13 @@ def seed_default_sources(db: Session) -> int:
             db.flush()
             media_by_name[seed["medium_name"]] = medium
 
-        # Categoría
+        # Categoría (lookup by IPTC code from seed)
         category = categories_by_name.get(seed["category"])
         if category is None:
-            category = Category(name=seed["category"], source="IPTC")
+            # Fallback: create with IPTC code as id
+            cat_id = int(seed["category"]) if seed["category"].isdigit() else None
+            cat_label = IPTC_CATEGORIES.get(seed["category"], seed["category"])
+            category = Category(id=cat_id, name=cat_label, source="IPTC") if cat_id else Category(name=cat_label, source="IPTC")
             db.add(category)
             db.flush()
             categories_by_name[seed["category"]] = category

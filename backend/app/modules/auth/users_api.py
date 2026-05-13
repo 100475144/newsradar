@@ -103,20 +103,44 @@ def create_user(
             status_code=status.HTTP_409_CONFLICT,
             detail="A user with this email already exists.",
         )
+
+    # Resolve role_ids: default to gestor if not provided or empty.
+    gestor = db.query(Role).filter(Role.name == "gestor").first()
+    role_ids = payload.role_ids
+
+    if role_ids is not None and len(role_ids) > 0:
+        # Validate: only 1 role allowed.
+        if len(role_ids) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Users can only have one role.",
+            )
+        target_role_id = role_ids[0]
+        role = db.query(Role).filter(Role.id == target_role_id).first()
+        if role is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Role with id {target_role_id} does not exist.",
+            )
+        assigned_roles = [role]
+    else:
+        # Default to gestor role.
+        assigned_roles = [gestor] if gestor else []
+
+    # Determine the role name for the legacy 'role' column.
+    role_name = assigned_roles[0].name if assigned_roles else "gestor"
+
     user = User(
         email=payload.email.strip().lower(),
         first_name=payload.first_name.strip(),
         last_name=payload.last_name.strip(),
         organization=payload.organization.strip(),
         hashed_password=get_password_hash(payload.password),
-        role="gestor",
+        role=role_name,
         is_active=True,
         is_verified=True,  # admin-created users no need email verification
     )
-    # Asignar siempre rol gestor (CAMBIO #1bis).
-    gestor = db.query(Role).filter(Role.name == "gestor").first()
-    if gestor is not None:
-        user.roles.append(gestor)
+    user.roles = assigned_roles
     db.add(user)
     db.commit()
     db.refresh(user)

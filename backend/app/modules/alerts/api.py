@@ -124,8 +124,15 @@ def create_user_alert(
     user_id: int = Path(..., ge=1),
     current_user: User = Depends(_gestor_or_admin),
     service: AlertService = Depends(get_alert_service),
+    db: Session = Depends(get_db),
 ):
     _ensure_user_access(current_user, user_id)
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if target_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
     return service.create_alert(payload, user_id)
 
 
