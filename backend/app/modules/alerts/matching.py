@@ -80,12 +80,24 @@ def _news_matches_alert(
             return False
     else:
         # Si no hay filtro de canales/medios, usar las categorías de la alerta.
+        # ``alert_codes`` contiene los códigos IPTC oficiales (``"01000000"``…
+        # ``"17000000"``) tal como vienen en ``alert.categories[*].code``.
+        # ``Category.id`` se guarda como entero (``1000000``) y ``Category.name``
+        # como etiqueta en español ("Artes, cultura…"). Para que el matching
+        # funcione comparamos contra **el código IPTC del canal** (id zero-padded)
+        # y, defensivamente, también contra el nombre normalizado.
         alert_codes = _alert_category_codes(alert)
         if not alert_codes:
             return False
         if channel_category is None:
             return False
-        if _normalize(channel_category.name) not in alert_codes:
+        channel_code = (
+            str(channel_category.id).zfill(8)
+            if channel_category.id is not None
+            else ""
+        )
+        candidate_keys = {channel_code, _normalize(channel_category.name)}
+        if not (candidate_keys & alert_codes):
             return False
 
     haystack = " ".join(

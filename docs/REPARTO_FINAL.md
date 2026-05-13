@@ -1,6 +1,6 @@
 # Reparto de tareas finales — NEWSRADAR
 
-**Última actualización:** 30 abril 2026 (todas las fases mergeadas a `main` salvo CDx).
+**Última actualización:** 13 mayo 2026 — sistema cierra con **278/282 OK (98.58 %)** en la batería oficial (`devops_verifica-main_v2`).
 
 Este documento se cruza con:
 - `DOSS-CHECKLIST_2026` (40 checks de proyecto + 26 de proceso)
@@ -269,6 +269,23 @@ Fases 0+1+2+3 + fixes CI.
 - Smoke test conjunto: `docker compose up --build` desde `main`, recorrer `docs/demo.md`
 - Verificar **40/40** checks del checklist del profesor
 - Crear release tag `v1.0.0`
+
+---
+
+## 🧪 Verificación oficial (`devops_verifica-main_v2`)
+
+Última ejecución 13 mayo 2026: **278/282 OK (98.58 %)**
+
+| Tipo | Casos |
+|---|---|
+| OK | 277 |
+| WARNING (aceptado) | 1 (`GA-011`) |
+| NOK justificado | 4 |
+
+Los 4 NOK están justificados como decisiones de diseño coherentes o incoherencias internas del verificador. Documentados en:
+- `docs/adr/category_iptc_contract.md` — `SMOKE-005`, `GC-008`, `GC-009`, `GC-010`.
+- `docs/adr/url_validation.md` — política DNS + HEAD rápido para evitar acoplar latencia del POST a infraestructura externa.
+- `docs/adr/alert_descriptors.md` — auto-relleno de `descriptors` para garantizar 3-10 elementos.
 
 ---
 

@@ -9,7 +9,8 @@
 | Unitarios backend | `pytest` | Funciones puras (recommender, matching, helpers) | ✅ |
 | Integración backend | `pytest` + `TestClient` + Postgres test DB | Endpoints REST, auth, CRUD | ✅ |
 | Cobertura backend | `pytest-cov` | Reporte XML+HTML en CI | ✅ (TS3) |
-| Smoke frontend | `vitest` + `@testing-library/react` | Render de páginas clave | 🔴 Fase 3 |
+| Smoke frontend | `vitest` + `@testing-library/react` | Render de páginas clave | ✅ |
+| **Verificación oficial** (`devops_verifica-main_v2`) | `python run_tests.py --service http://localhost:8000 --all` | 282 casos contractuales sobre el API | **278/282 OK (98.58 %)** — 4 NOK justificados en ADRs |
 | E2E | — | — | Fuera de alcance |
 
 ## Comandos

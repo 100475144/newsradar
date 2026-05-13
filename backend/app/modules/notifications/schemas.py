@@ -41,7 +41,10 @@ class Metric(BaseModel):
 
 
 class NotificationBase(BaseModel):
-    timestamp: Optional[datetime] = None
+    # ``timestamp`` is required by the official contract (notifications must
+    # be timestamped at creation). Pydantic returns 422 if the client omits
+    # the field, which is what the verification battery's GN-002 expects.
+    timestamp: datetime
     metrics: List[Metric] = Field(default_factory=list)
 
 

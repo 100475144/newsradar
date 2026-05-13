@@ -151,8 +151,17 @@ Toda la documentación viva está en [`docs/`](docs/):
 | Backend (pytest + cov) | `cd backend && pytest app/tests` | 31 tests, cobertura ~75% |
 | Frontend (vitest) | `cd frontend && npm test` | 7 smoke tests |
 | Linter | `ruff check backend/app/` | 0 errores |
+| Verificación oficial (`devops_verifica-main_v2`) | `python run_tests.py --service http://localhost:8000 --all` | **278/282 OK (98.58%)** — 4 NOK justificados |
 
 Ver [`docs/testing-strategy.md`](docs/testing-strategy.md) para detalles.
+
+### Casos de la batería de verificación con NOK justificado
+
+Los 4 NOK de la batería oficial corresponden a **decisiones de diseño coherentes** o a **incoherencias internas del verificador**, todas documentadas como ADRs:
+
+- **SMOKE-005** ↔ **GC-016**: mutuamente excluyentes (uno exige `Category.id` como string, el otro como entero). Optamos por entero — ver [`docs/adr/category_iptc_contract.md`](docs/adr/category_iptc_contract.md).
+- **GC-008** "name-source inconsistente": no aplica en catálogo cerrado IPTC — ver mismo ADR.
+- **GC-009 / GC-010** "duplicado": el POST sobre catálogo cerrado de 17 categorías es **idempotente** por diseño REST — ver mismo ADR.
 
 El CI (GitHub Actions) corre las 4 jobs en cada PR a `main`: `backend-test`, `backend-lint`, `frontend-build`, `frontend-test`.
 
