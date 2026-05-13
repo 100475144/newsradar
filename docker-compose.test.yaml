@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: sh -c "cd /code/app && alembic upgrade head && cd /code && pytest -vv --durations=25"
+    command: sh -c "cd /code/app && alembic upgrade head && cd /code && pytest --cov=app --cov-report=html --cov-report=xml -vv --durations=25"
     environment:
       - DATABASE_URL=postgresql+psycopg://test_user:test_password@db_test:5432/test_db
     depends_on:

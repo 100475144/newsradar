@@ -58,43 +58,47 @@ if not _is_test_database_url(TEST_DATABASE_URL):
     )
 
 
-engine = create_engine(TEST_DATABASE_URL)
+# Mantener engine y conexión para
+# toda la ejecución de los tests
+@pytest.fixture(scope="session")
+def engine():
+    return create_engine(TEST_DATABASE_URL, echo=False)
+
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
-
-# Crear tablas antes de tests
-@pytest.fixture(scope="session", autouse=True)
-def setup_database():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
+@pytest.fixture(scope="session")
+def connection(engine):
+    return engine.connect()
 
 
-# Sesión por test (aislamiento)
 @pytest.fixture
-def db():
-    connection = engine.connect()
+def db(connection):
     transaction = connection.begin()
-
     session = TestingSessionLocal(bind=connection)
 
     yield session
 
     session.close()
     transaction.rollback()
-    connection.close()
+
+@pytest.fixture(autouse=True)
+def override_db(db):
+    """
+    Sustituir la dependencia de base de datos dinámicamente
+    para que los tests estén usando siempre la sesión que 
+    se define en la fixture anterior "db()"
+    """
+    def _override():
+        yield db
+
+    app.dependency_overrides[get_db] = _override
+    yield
+    app.dependency_overrides.clear()
+
+# Mantener mismo cliente de test de FastAPI 
+# para toda la ejecución de los tests
+@pytest.fixture(scope="session")
+def client():
+    return TestClient(app)
 
 
-# Override de dependencia FastAPI
-@pytest.fixture
-def client(db):
-    def override_get_db():
-        try:
-            yield db
-        finally:
-            pass
-
-    app.dependency_overrides[get_db] = override_get_db
-
-    with TestClient(app) as c:
-        yield c
