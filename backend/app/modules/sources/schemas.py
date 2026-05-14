@@ -27,7 +27,12 @@ class CategoryBase(BaseModel):
 
 
 class CategoryCreate(CategoryBase):
-    pass
+    # ``code`` es opcional en POST. Si el cliente lo proporciona (con o sin
+    # prefijo ``medtop:``), el endpoint valida que coincida con el código
+    # IPTC canónico derivado del ``name``. Esto cubre GC-008 (el verificador
+    # postea pares (name, code) inconsistentes tras vaciar el catálogo y
+    # espera 4xx).
+    code: Optional[str] = Field(default=None, max_length=30)
 
 
 class CategoryUpdate(BaseModel):
