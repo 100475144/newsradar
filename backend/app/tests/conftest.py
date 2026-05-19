@@ -84,10 +84,13 @@ def db():
     transaction.rollback()
     connection.close()
 
-
-# Override de dependencia FastAPI
-@pytest.fixture
-def client(db):
+@pytest.fixture(autouse=True)
+def override_db(db):
+    """
+    Sustituir la dependencia de base de datos dinámicamente
+    para que los tests estén usando siempre la sesión que 
+    se define en la fixture anterior "db()"
+    """
     def override_get_db():
         try:
             yield db
@@ -95,6 +98,10 @@ def client(db):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
+    yield
+    app.dependency_overrides.clear()
 
-    with TestClient(app) as c:
+@pytest.fixture(scope="session")
+def client():
+   with TestClient(app) as c:
         yield c
