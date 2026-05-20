@@ -10,7 +10,6 @@ def sample_source():
         "category": "science_technology",
     }
 
-@pytest.fixture
 def bypass_url_validation(monkeypatch):
 
     def fake_url_check(url: str, timeout: float = 2.0):
@@ -21,7 +20,6 @@ def bypass_url_validation(monkeypatch):
         fake_url_check,
     )
 
-@pytest.fixture
 def bypass_rss_content_validation(monkeypatch):
 
     def fake_rss_content_check(url: str, timeout: float = 2.0):

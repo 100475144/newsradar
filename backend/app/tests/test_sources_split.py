@@ -61,9 +61,16 @@ def test_information_source_crud_round_trip(client, db):
     assert response.status_code == 204
 
 
-def test_nested_rss_channel_crud(client, db, bypass_url_validation, bypass_rss_content_validation):
-    bypass_url_validation
-    bypass_rss_content_validation
+def test_nested_rss_channel_crud(client, db, monkeypatch):
+    """
+    IMPORTANTE: Se hace bypass de la validación de URL y contenido RSS por 2 razones:
+    - Verificar una URL y contenido RSS válidos depende de una máquina en Internet.
+    - Verificar las funciones _check_url_resolvable() y _check_rss_content() no debería ser 
+      responsabilidad de este test ya que se enfoca en CRUD.
+    """
+    bypass_url_validation(monkeypatch)
+    bypass_rss_content_validation(monkeypatch)
+
     user = create_test_user(db, email="rss-crud@example.com")
     headers = auth_headers_for(client, user.email)
 
