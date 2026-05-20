@@ -62,6 +62,8 @@ def test_information_source_crud_round_trip(client, db):
 
 
 def test_nested_rss_channel_crud(client, db, bypass_url_validation, bypass_rss_content_validation):
+    bypass_url_validation
+    bypass_rss_content_validation
     user = create_test_user(db, email="rss-crud@example.com")
     headers = auth_headers_for(client, user.email)
 
