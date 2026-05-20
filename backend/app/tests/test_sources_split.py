@@ -5,19 +5,12 @@ from __future__ import annotations
 from app.modules.sources.models import Category
 from app.tests.helpers import auth_headers_for, create_test_user
 from app.core.iptc import IPTC_CATEGORIES
+from app.tests.fixtures.sources import bypass_url_validation, bypass_rss_content_validation
 
 
 def test_categories_endpoint_lists_seeded_iptc(client, db):
     # Sembramos 17 IPTC primer nivel manualmente (el lifespan de la app no
     # corre en tests con BD efímera).
-
-    """ iptc_codes = [
-        "Artes, cultura, entretenimiento y medios", "conflict_war_peace", "crime_law_justice",
-        "disaster_accident", "economy_business_finance", "education", "environment",
-        "health", "human_interest", "labour", "lifestyle_leisure", "politics",
-        "religion_belief", "Ciencia y tecnología", "society", "sport", "weather",
-    ] """
-
 
     for code in IPTC_CATEGORIES:
         if not db.query(Category).filter(Category.id == int(code)).first():
@@ -68,7 +61,7 @@ def test_information_source_crud_round_trip(client, db):
     assert response.status_code == 204
 
 
-def test_nested_rss_channel_crud(client, db):
+def test_nested_rss_channel_crud(client, db, bypass_url_validation, bypass_rss_content_validation):
     user = create_test_user(db, email="rss-crud@example.com")
     headers = auth_headers_for(client, user.email)
 
