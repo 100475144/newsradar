@@ -8,7 +8,7 @@ from app.tests.helpers import auth_headers_for, create_test_user
 VALID_PAYLOAD = {
     "name": "Test Alert",
     "descriptors": ["ai", "machine learning", "neural networks"],
-    "categories": [{"code": "science_technology", "label": "Science and Technology"}],
+    "categories": [{"code": "13000000", "label": "Ciencia y tecnología"}],
     "rss_channels_ids": [],
     "information_sources_ids": [],
     "cron_expression": "*/5 * * * *",
@@ -34,7 +34,7 @@ def test_create_alert_returns_official_schema(client, db):
     assert body["name"] == "Test Alert"
     assert body["descriptors"] == ["ai", "machine learning", "neural networks"]
     assert body["categories"] == [
-        {"code": "science_technology", "label": "Science and Technology"}
+        {"code": "13000000", "label": "Ciencia y tecnología"}
     ]
     assert body["rss_channels_ids"] == []
     assert body["information_sources_ids"] == []

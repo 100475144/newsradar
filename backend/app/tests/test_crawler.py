@@ -51,9 +51,9 @@ def _make_feed(entries: list[dict]):
 
 def _ensure_seed_entities(db):
     """Garantiza Category + InformationSource + RSSChannel para los tests."""
-    cat = db.query(Category).filter(Category.name == "science_technology").first()
+    cat = db.query(Category).filter(Category.name == "Ciencia y tecnología").first()
     if cat is None:
-        cat = Category(name="science_technology", source="IPTC")
+        cat = Category(id=13000000 ,name="Ciencia y tecnología", source="IPTC")
         db.add(cat)
         db.commit()
         db.refresh(cat)
@@ -89,7 +89,7 @@ def test_crawl_success_creates_news_rows(db):
         medium_name="TestMedium",
         name="TestChannel",
         url=channel.url,
-        category="science_technology",
+        category="Ciencia y tecnología",
         is_active=True,
     )
 
@@ -141,7 +141,7 @@ def test_crawl_handles_empty_feed(db):
         medium_name="TestMedium",
         name="TestChannel",
         url=channel.url,
-        category="science_technology",
+        category="Ciencia y tecnología",
     )
 
     fake_feed = _make_feed([])
@@ -164,7 +164,7 @@ def test_crawl_handles_malformed_entries_without_crashing(db):
         medium_name="TestMedium",
         name="TestChannel",
         url=channel.url,
-        category="science_technology",
+        category="Ciencia y tecnología",
     )
 
     fake_feed = _make_feed([
@@ -192,7 +192,7 @@ def test_crawl_handles_feed_with_no_entries_attribute(db):
         medium_name="TestMedium",
         name="TestChannel",
         url=channel.url,
-        category="science_technology",
+        category="Ciencia y tecnología",
     )
 
     # Cuando feedparser falla, devuelve un objeto con ``entries=[]`` y bozo flag.
@@ -220,7 +220,7 @@ def test_crawl_does_not_create_duplicates_on_repeat(db):
         medium_name="TestMedium",
         name="TestChannel",
         url=channel.url,
-        category="science_technology",
+        category="Ciencia y tecnología",
     )
 
     fake_feed = _make_feed([

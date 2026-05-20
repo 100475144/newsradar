@@ -6,9 +6,16 @@ services:
     command: sh -c "cd /code/app && alembic upgrade head && cd /code && pytest --cov=app --cov-report=html --cov-report=xml -vv --durations=25"
     environment:
       - DATABASE_URL=postgresql+psycopg://test_user:test_password@db_test:5432/test_db
+      - CRAWLER_INTERVAL_SECONDS=300
+      - SMTP_HOST=mailhog_test
+      - SMTP_PORT=1025
+      - SMTP_SENDER=no-reply@newsradar.local
+      - SMTP_USE_TLS=false
     depends_on:
       db_test:
         condition: service_healthy
+      mailhog_test:
+        condition: service_started
     volumes:
       - ./backend:/code
 
@@ -24,3 +31,11 @@ services:
       test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
       interval: 5s
       retries: 5
+  
+  mailhog_test:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+    logging:
+      driver: none

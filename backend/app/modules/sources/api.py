@@ -23,7 +23,7 @@ from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_verified_user, get_db, require_role
-from app.core.iptc import IPTC_CATEGORIES, IPTC_CATEGORY_CODES, IPTC_VALID_NAMES, is_valid_iptc_name
+from app.core.iptc import IPTC_CATEGORIES, IPTC_CATEGORY_CODES, is_valid_iptc_name
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserRole
 from app.modules.sources.models import Category, InformationSource, RSSChannel

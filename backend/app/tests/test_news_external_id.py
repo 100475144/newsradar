@@ -24,10 +24,10 @@ def test_create_news_accepts_long_external_id(db):
     db.refresh(user)
 
     category = (
-        db.query(Category).filter(Category.name == "science_technology").first()
+        db.query(Category).filter(Category.name == "Ciencia y tecnología").first()
     )
     if category is None:
-        category = Category(name="science_technology", source="IPTC")
+        category = Category(id=13000000 ,name="Ciencia y tecnología", source="IPTC")
         db.add(category)
         db.commit()
         db.refresh(category)
@@ -58,7 +58,7 @@ def test_create_news_accepts_long_external_id(db):
             link="https://example.com/articles/long-external-id",
             summary="Regression test for long feed identifiers.",
             published_at=datetime.now(timezone.utc),
-            category="science_technology",
+            category="Ciencia y tecnología",
             classification_origin="source",
             language="en",
             author="NewsRadar Test",

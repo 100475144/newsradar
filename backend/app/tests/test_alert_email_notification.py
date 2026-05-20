@@ -95,11 +95,11 @@ def test_matching_news_sends_email_notification_via_mailhog():
         # Asegurar Category IPTC y crear InformationSource + RSSChannel.
         category = (
             db.query(Category)
-            .filter(Category.name == "science_technology")
+            .filter(Category.name == "Ciencia y tecnología")
             .first()
         )
         if category is None:
-            category = Category(name="science_technology", source="IPTC")
+            category = Category(id=13000000, name="Ciencia y tecnología", source="IPTC")
             db.add(category)
             db.commit()
             db.refresh(category)
@@ -129,7 +129,7 @@ def test_matching_news_sends_email_notification_via_mailhog():
             name=alert_name,
             keyword="ai",
             descriptors=["machine learning", "neural networks", "automation"],
-            categories=[{"code": "science_technology", "label": "Science and Technology"}],
+            categories=[{"code": "Ciencia y tecnología", "label": "Science and Technology"}],
             rss_channels_ids=[str(channel.id)],
             information_sources_ids=[],
             cron_expression="*/5 * * * *",
@@ -150,7 +150,7 @@ def test_matching_news_sends_email_notification_via_mailhog():
             link=article_link,
             summary="Machine learning and neural networks are changing the industry.",
             published_at=datetime.now(timezone.utc),
-            category="science_technology",
+            category="Ciencia y tecnología",
             classification_origin="source",
             language="en",
             author="Test Reporter",
