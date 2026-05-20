@@ -7,10 +7,10 @@ from app.modules.crawler.service import CrawlerService
 def test_source_category_is_preferred_over_rss_when_available():
     category, origin = CrawlerService._resolve_initial_classification(
         item_category="technology",
-        source_category="science_technology",
+        source_category="Ciencia y tecnología",
     )
 
-    assert category == "science_technology"
+    assert category == "Ciencia y tecnología"
     assert origin == "source"
 
 
@@ -29,25 +29,27 @@ def test_alert_classification_overrides_existing_news_category():
     matching_alerts = [
         SimpleNamespace(
             id=8,
-            categories=[{"code": "science_technology", "label": "Science"}],
+            categories=[{"code": "Ciencia y tecnología", "label": "Science"}],
         ),
         SimpleNamespace(
             id=3,
-            categories=[{"code": "science_technology", "label": "Science"}],
+            categories=[{"code": "Ciencia y tecnología", "label": "Science"}],
         ),
         SimpleNamespace(
             id=9,
-            categories=[{"code": "economy_business_finance", "label": "Economy"}],
+            categories=[{"code": "Economía, negocios y finanzas", "label": "Economy"}],
         ),
     ]
 
     category, origin = _resolve_news_classification(
-        current_category="economy_business_finance",
+        current_category="Economía, negocios y finanzas",
         current_origin="source",
         matching_alerts=matching_alerts,
     )
 
-    assert category == "science_technology"
+    assert category == "ciencia y tecnología"   
+    # Comparación hecha en minúscula ya que _resolve_news_classification()
+    # normaliza los strings de categoría (strip().lower())
     assert origin == "alert"
 
 
