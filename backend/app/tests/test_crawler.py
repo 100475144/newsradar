@@ -51,9 +51,9 @@ def _make_feed(entries: list[dict]):
 
 def _ensure_seed_entities(db):
     """Garantiza Category + InformationSource + RSSChannel para los tests."""
-    cat = db.query(Category).filter(Category.name == "science_technology").first()
+    cat = db.query(Category).filter(Category.name == "Ciencia y tecnología").first()
     if cat is None:
-        cat = Category(name="science_technology", source="IPTC")
+        cat = Category(id=13000000 ,name="Ciencia y tecnología", source="IPTC")
         db.add(cat)
         db.commit()
         db.refresh(cat)
