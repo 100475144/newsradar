@@ -62,7 +62,10 @@ if not _is_test_database_url(TEST_DATABASE_URL):
 # toda la ejecución de los tests
 @pytest.fixture(scope="session")
 def engine():
-    return create_engine(TEST_DATABASE_URL, echo=False)
+    r = create_engine(TEST_DATABASE_URL, echo=False)
+    Base.metadata.drop_all(bind=r)
+    Base.metadata.create_all(bind=r)
+    return r
 
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
