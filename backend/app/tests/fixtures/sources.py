@@ -1,5 +1,4 @@
 import pytest
-#from app.modules.sources.api import _check_url_resolvable, _check_rss_content
 
 @pytest.fixture
 def sample_source():
