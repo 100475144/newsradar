@@ -122,6 +122,6 @@ def override_db(db):
     app.dependency_overrides.clear()
 
 @pytest.fixture(scope="session")
-def client():
+def client(engine):  # noqa: ARG001 - depend on engine so tables exist before lifespan
    with TestClient(app) as c:
         yield c
