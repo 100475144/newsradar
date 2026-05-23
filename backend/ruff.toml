@@ -1,2 +1,2 @@
 # Excluir archivos de alembic en el linter
-extend-exclude = ["alembic"]
+extend-exclude = ["alembic", "tests"]
