@@ -1,6 +1,6 @@
 # Reparto de tareas finales — NEWSRADAR
 
-**Última actualización:** 13 mayo 2026 — sistema cierra con **278/282 OK (98.58 %)** en la batería oficial (`devops_verifica-main_v2`).
+**Última actualización:** 23 mayo 2026 — sistema cierra con **278 OK + 1 WARNING admitido + 2 NOK admitidos = 99.29 % efectivo** sobre 281 casos en la batería oficial (`devops_verifica`, versión del 20/05/2026).
 
 Este documento se cruza con:
 - `DOSS-CHECKLIST_2026` (40 checks de proyecto + 26 de proceso)
@@ -272,18 +272,32 @@ Fases 0+1+2+3 + fixes CI.
 
 ---
 
-## 🧪 Verificación oficial (`devops_verifica-main_v2`)
+## 🧪 Verificación oficial (`devops_verifica`, versión del 20/05/2026)
 
-Última ejecución 13 mayo 2026: **278/282 OK (98.58 %)**
+Última ejecución 23 mayo 2026 — **99.29 % efectivo** sobre 281 casos.
 
 | Tipo | Casos |
 |---|---|
-| OK | 277 |
-| WARNING (aceptado) | 1 (`GA-011`) |
-| NOK justificado | 4 |
+| OK | 278 |
+| WARNING (admitido por el profesor) | 1 (`GA-011`) |
+| NOK admitido por el profesor | 2 (`GC-009`, `GC-010`) |
 
-Los 4 NOK están justificados como decisiones de diseño coherentes o incoherencias internas del verificador. Documentados en:
-- `docs/adr/category_iptc_contract.md` — `SMOKE-005`, `GC-008`, `GC-009`, `GC-010`.
+El profesor publicó el 20/05/2026 una versión actualizada de la batería que:
+
+* Resuelve **`SMOKE-005`** directamente en el verificador (función
+  `_extract_iptc_code` corregida para aceptar tanto string como entero en
+  el campo `id`).
+* **Comenta `GC-008`** porque el payload generado no permitía la aserción
+  esperada — quedan ahora 281 casos totales en lugar de 282.
+
+Los 2 NOK que mantenemos están **admitidos explícitamente por el profesor**
+en su correo del 14/05/2026: el `POST /categories` es idempotente sobre el
+catálogo cerrado IPTC (devuelve 201 con la fila canónica en vez de 409).
+El WARNING de `GA-011` también está admitido (auto-relleno de descriptors
+para garantizar el rango 3-10 del enunciado).
+
+Decisiones documentadas en:
+- `docs/adr/category_iptc_contract.md` — `Category.id` entero, POST idempotente, validación `code`.
 - `docs/adr/url_validation.md` — política DNS + HEAD rápido para evitar acoplar latencia del POST a infraestructura externa.
 - `docs/adr/alert_descriptors.md` — auto-relleno de `descriptors` para garantizar 3-10 elementos.
 

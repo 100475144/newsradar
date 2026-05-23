@@ -10,7 +10,7 @@
 | Integración backend | `pytest` + `TestClient` + Postgres test DB | Endpoints REST, auth, CRUD | ✅ |
 | Cobertura backend | `pytest-cov` | Reporte XML+HTML en CI | ✅ (TS3) |
 | Smoke frontend | `vitest` + `@testing-library/react` | Render de páginas clave | ✅ |
-| **Verificación oficial** (`devops_verifica-main_v2`) | `python run_tests.py --service http://localhost:8000 --all` | 282 casos contractuales sobre el API | **278/282 OK (98.58 %)** — 4 NOK justificados en ADRs |
+| **Verificación oficial** (`devops_verifica`, v3 del 20/05/2026) | `python run_tests.py --service http://localhost:8000 --all` | 281 casos contractuales sobre el API | **278 OK + 1 WARNING admitido (`GA-011`) + 2 NOK admitidos (`GC-009`, `GC-010`) = 99.29 % efectivo** |
 | E2E | — | — | Fuera de alcance |
 
 ## Comandos

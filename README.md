@@ -151,17 +151,18 @@ Toda la documentación viva está en [`docs/`](docs/):
 | Backend (pytest + cov) | `cd backend && pytest app/tests` | 31 tests, cobertura ~75% |
 | Frontend (vitest) | `cd frontend && npm test` | 7 smoke tests |
 | Linter | `ruff check backend/app/` | 0 errores |
-| Verificación oficial (`devops_verifica-main_v2`) | `python run_tests.py --service http://localhost:8000 --all` | **278/282 OK (98.58%)** — 4 NOK justificados |
+| Verificación oficial (`devops_verifica`, v3 del 20/05/2026) | `python run_tests.py --service http://localhost:8000 --all` | **278 OK + 1 WARNING admitido + 2 NOK admitidos = 99.29% efectivo** sobre 281 casos |
 
 Ver [`docs/testing-strategy.md`](docs/testing-strategy.md) para detalles.
 
-### Casos de la batería de verificación con NOK justificado
+### Casos de la batería de verificación con NOK / WARNING admitido
 
-Los 4 NOK de la batería oficial corresponden a **decisiones de diseño coherentes** o a **incoherencias internas del verificador**, todas documentadas como ADRs:
+Los 2 NOK y el WARNING de la batería oficial están **admitidos explícitamente por el profesor** (correos del 14/05 y 20/05 de 2026) como decisiones de diseño:
 
-- **SMOKE-005** ↔ **GC-016**: mutuamente excluyentes (uno exige `Category.id` como string, el otro como entero). Optamos por entero — ver [`docs/adr/category_iptc_contract.md`](docs/adr/category_iptc_contract.md).
-- **GC-008** "name-source inconsistente": no aplica en catálogo cerrado IPTC — ver mismo ADR.
-- **GC-009 / GC-010** "duplicado": el POST sobre catálogo cerrado de 17 categorías es **idempotente** por diseño REST — ver mismo ADR.
+- **GC-009 / GC-010** "duplicado exacto" / "duplicado case-insensitive": el POST sobre el catálogo cerrado IPTC de 17 categorías es **idempotente** por diseño REST. Devuelve siempre 201 con la fila canónica en vez de 409, porque en un catálogo cerrado no existe el concepto de "duplicado". Ver [`docs/adr/category_iptc_contract.md`](docs/adr/category_iptc_contract.md).
+- **GA-011** "descriptores duplicados aceptados" (WARNING): el sistema deduplica los descriptors recibidos y autorellena hasta el rango 3-10 que pide el enunciado, en lugar de devolver 422. Ver [`docs/adr/alert_descriptors.md`](docs/adr/alert_descriptors.md).
+
+`SMOKE-005` y `GC-008`, que daban NOK en versiones anteriores de la batería, los resolvió el profesor directamente en la v3 del verificador (20/05/2026).
 
 El CI (GitHub Actions) corre las 4 jobs en cada PR a `main`: `backend-test`, `backend-lint`, `frontend-build`, `frontend-test`.
 

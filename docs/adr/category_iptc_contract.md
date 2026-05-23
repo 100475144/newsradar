@@ -1,6 +1,6 @@
 # ADR — Contrato del recurso ``Category`` (catálogo IPTC cerrado)
 
-Fecha: 2026-05-13
+Fecha original: 2026-05-13 · Actualizado: 2026-05-23
 Estado: Aceptado
 
 ## Contexto
@@ -78,10 +78,10 @@ reiniciar, diverge entre workers) y semánticamente confusa.
 
 | Caso | Resultado | Motivo |
 |---|---|---|
-| **SMOKE-005** | **NOK justificado** | Espera ``id`` como string padded ``"01000000"``. Decisión D1: ``id`` es entero. **Incompatible con GC-016 (que sí espera entero)** — los dos casos son mutuamente excluyentes en el verificador. |
-| **GC-008** | **NOK justificado** | Espera 4xx ante "name-source inconsistente". Con catálogo cerrado D2 + ``source`` obligatorio ``"IPTC"`` el concepto de "inconsistencia name-source" no existe en nuestra spec. |
-| **GC-009** | **NOK justificado** | Espera 409 al postear el mismo nombre dos veces. Decisión D2: catálogo cerrado idempotente → siempre 201 con la fila canónica. |
-| **GC-010** | **NOK justificado** | Idem GC-009, case-insensitive. |
+| **SMOKE-005** | OK (en verificador v3 del 20/05/2026) | El profesor incorporó la corrección de `_extract_iptc_code` en el verificador, que ahora acepta `id` entero o string. |
+| **GC-008** | Caso retirado (verificador v3) | Comentado en `casos_prueba.csv` línea 86 por el profesor. |
+| **GC-009** | **NOK admitido** | Espera 409 al postear el mismo nombre dos veces. Decisión D2: catálogo cerrado idempotente → siempre 201 con la fila canónica. |
+| **GC-010** | **NOK admitido** | Idem GC-009, case-insensitive. |
 | **GC-016** | OK | ``id`` se expone como entero (D1). |
 | **GC-001** | OK | POST idempotente devuelve 201 con la fila canónica (D2). |
 | **GC-022** | OK | 17 categorías sembradas siempre. |
@@ -100,6 +100,26 @@ Tras consultarlo por correo, el profesor confirma:
   inconsistentes. Hemos añadido validación en `POST /categories`: si el
   cliente envía un `id` que no coincide con el `id` canónico derivado del
   `name`, respondemos 400.
+
+## Actualización oficial del verificador (20/05/2026)
+
+El profesor publicó una nueva versión de la batería en la que:
+
+* **`SMOKE-005`**: incluye oficialmente la corrección de
+  `_extract_iptc_code` (acepta `id` entero o string). Ya **no requiere
+  parche local** del verificador.
+* **`GC-008`**: queda **comentado** en `casos_prueba.csv` línea 86 porque
+  *"el payload generado no sirve para la aserción necesaria"*. Total de
+  casos automáticos baja de 282 a **281**.
+
+La validación del campo opcional ``code`` en ``POST /categories`` que
+añadimos para `GC-008` se mantiene porque es **funcionalmente correcta**
+(garantiza consistencia entre `name` y `code` cuando el cliente envía
+ambos), aunque ya no haga falta para superar la batería.
+
+Resultado tras esta actualización (23/05/2026): **278 OK + 1 WARNING
+admitido (`GA-011`) + 2 NOK admitidos (`GC-009`, `GC-010`) = 99.29 %
+efectivo** sobre 281 casos.
 
 ## Coste asumido y razón
 
