@@ -65,6 +65,11 @@ jobs:
             --cov-report=xml:coverage.xml \
             --cov-report=html:coverage_html
 
+      - name: Fix coverage source paths
+        working-directory: backend
+        run: |
+          sed -i "s|<source>.*</source>|<source>backend/app</source>|g" coverage.xml
+
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -155,6 +160,16 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend
+
+      - name: Fix coverage source paths
+        run: |
+          sed -i 's|<source>/code/app</source>|<source>backend/app</source>|g' backend/coverage.xml
 
       - name: Check Sonar secrets
         run: |
