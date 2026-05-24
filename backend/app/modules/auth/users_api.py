@@ -25,6 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_verified_user, get_db, require_role
+from app.core.db_utils import safe_commit
 from app.core.security import get_password_hash
 from app.modules.auth.models import Role, User
 from app.modules.auth.schemas import (
@@ -142,7 +143,7 @@ def create_user(
     )
     user.roles = assigned_roles
     db.add(user)
-    db.commit()
+    safe_commit(db, conflict_detail="A user with this email already exists.")
     db.refresh(user)
     return user
 
@@ -198,7 +199,7 @@ def update_user(
         _set_role_ids(db, user, payload.role_ids)
 
     db.add(user)
-    db.commit()
+    safe_commit(db, conflict_detail="A user with this email already exists.")
     db.refresh(user)
     return user
 

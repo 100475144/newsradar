@@ -22,6 +22,7 @@ from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_verified_user, get_db
+from app.core.db_utils import safe_commit
 from app.modules.auth.models import Role, User
 from app.modules.auth.schemas import RoleCreate, RoleResponse, RoleUpdate
 
@@ -80,7 +81,7 @@ def create_role(
         )
     role = Role(name=name)
     db.add(role)
-    db.commit()
+    safe_commit(db, conflict_detail="A role with this name already exists.")
     db.refresh(role)
     return role
 
@@ -116,7 +117,7 @@ def update_role(
             )
         role.name = new_name
     db.add(role)
-    db.commit()
+    safe_commit(db, conflict_detail="A role with this name already exists.")
     db.refresh(role)
     return role
 
