@@ -8,7 +8,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+psycopg://user:password@db:5432/news_db
-      - CRAWLER_INTERVAL_SECONDS=300
+      - CRAWLER_CRON_EXPRESSION=* * * * *
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
       - SMTP_SENDER=no-reply@newsradar.local
@@ -20,6 +20,8 @@ services:
         condition: service_started
     volumes:
       - ./backend:/code
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     healthcheck:
       test: curl --fail http://localhost:8000/api/v1/health || exit 1
       interval: 5m
