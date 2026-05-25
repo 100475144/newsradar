@@ -282,6 +282,16 @@ def seed_default_sources(db: Session) -> int:
             db.flush()
             categories_by_name[seed["category"]] = category
 
+        # Enforce max 5 channels per medium when seeding to avoid violating business rule.
+        current_count = (
+            db.query(RSSChannel)
+            .filter(RSSChannel.information_source_id == medium.id)
+            .count()
+        )
+        if current_count >= 5:
+            # Skip adding more channels for this medium.
+            continue
+
         channel = RSSChannel(
             url=seed["url"],
             information_source_id=medium.id,

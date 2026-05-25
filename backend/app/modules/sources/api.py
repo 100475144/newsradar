@@ -659,6 +659,17 @@ def create_rss_channel(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="An RSS channel with this URL already exists.",
             )
+    # Enforce max channels per information source (business rule): max 5
+    existing_count = (
+        db.query(RSSChannel)
+        .filter(RSSChannel.information_source_id == source_id)
+        .count()
+    )
+    if existing_count >= 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An information source may have at most 5 RSS channels registered.",
+        )
     # Validate URL is accessible and returns RSS/Atom content (after duplicate check).
     _check_rss_content(normalized)
     channel = RSSChannel(
