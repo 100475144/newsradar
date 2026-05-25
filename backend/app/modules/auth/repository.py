@@ -35,6 +35,7 @@ class UserRepository:
             first_name=user_data.first_name.strip(),
             last_name=user_data.last_name.strip(),
             organization=user_data.organization.strip(),
+            phone=user_data.phone.strip(),
             hashed_password=hashed_password,
         )
         # CAMBIO #1bis: asignar siempre el rol "gestor" automáticamente.

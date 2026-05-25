@@ -65,6 +65,7 @@ def _seed_admin_user() -> None:
             first_name=settings.admin_first_name,
             last_name=settings.admin_last_name,
             organization="NewsRadar",
+            phone=settings.admin_phone,
             hashed_password=get_password_hash(settings.admin_password),
             role="admin",
             is_active=True,

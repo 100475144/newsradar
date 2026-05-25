@@ -30,6 +30,7 @@ class UserBase(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=120)
     last_name: str = Field(..., min_length=1, max_length=120)
     organization: str = Field(..., min_length=1, max_length=180)
+    phone: str = Field(..., min_length=9, max_length=9, description="9 numeric digits phone number")
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -53,6 +54,16 @@ class UserBase(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("Organization is required.")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Phone number is required.")
+        if not value.isdigit() or len(value) != 9:
+            raise ValueError("Phone number must be exactly 9 numeric digits.")
         return value
 
 
@@ -118,6 +129,7 @@ class UserUpdate(BaseModel):
     first_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     last_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     organization: Optional[str] = Field(default=None, min_length=1, max_length=180)
+    phone: Optional[str] = Field(default=None, min_length=9, max_length=9)
     role_ids: Optional[List[int]] = None
     password: Optional[str] = Field(default=None, min_length=8, max_length=128)
 
@@ -141,9 +153,20 @@ class UserUpdate(BaseModel):
             raise ValueError("Organization cannot be empty.")
         return value
 
+    @field_validator("phone")
+    @classmethod
+    def validate_optional_phone(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip()
+        if not value.isdigit() or len(value) != 9:
+            raise ValueError("Phone number must be exactly 9 numeric digits.")
+        return value
+
 
 class UserResponse(UserBase):
     id: int
+    phone: str
     role: str = UserRole.GESTOR.value
     role_ids: List[int] = Field(default_factory=list)
     is_active: bool = True

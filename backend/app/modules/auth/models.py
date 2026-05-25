@@ -44,6 +44,9 @@ class User(Base):
     last_name = Column(String(120), nullable=False)
     organization = Column(String(180), nullable=False)
 
+    # Phone number: stored as string of 9 digits. Nullable at DB-level; API enforces presence/format where required.
+    phone = Column(String(9), nullable=True)
+
     hashed_password = Column(String, nullable=False)
 
     # `role` (string) se mantiene durante la transición para no romper checks

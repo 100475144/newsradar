@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     admin_password: str = Field(default="admin123")
     admin_first_name: str = Field(default="Admin")
     admin_last_name: str = Field(default="NewsRadar")
+    # Admin phone used when seeding the initial admin user (9 digits)
+    admin_phone: str = Field(default="000000000")
 
     model_config = SettingsConfigDict(
         env_file=".env",

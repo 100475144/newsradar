@@ -136,6 +136,7 @@ def create_user(
         first_name=payload.first_name.strip(),
         last_name=payload.last_name.strip(),
         organization=payload.organization.strip(),
+        phone=payload.phone.strip(),
         hashed_password=get_password_hash(payload.password),
         role=role_name,
         is_active=True,
@@ -197,6 +198,8 @@ def update_user(
                 detail="Only admin can change role assignments.",
             )
         _set_role_ids(db, user, payload.role_ids)
+    if getattr(payload, "phone", None) is not None:
+        user.phone = payload.phone.strip()
 
     db.add(user)
     safe_commit(db, conflict_detail="A user with this email already exists.")
