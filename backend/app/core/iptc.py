@@ -16,6 +16,7 @@ IPTC_CATEGORIES: dict[str, str] = {
     "09000000": "Mano de obra",
     "10000000": "Estilo de vida y tiempo libre",
     "11000000": "Política",
+    "11110000": "Sucesos",
     "12000000": "Religión y culto",
     "13000000": "Ciencia y tecnología",
     "14000000": "Sociedad",
@@ -43,6 +44,7 @@ _LEGACY_TO_CODE: dict[str, str] = {
     "sport": "15000000",
     "conflict_war_peace": "16000000",
     "weather": "17000000",
+    "sucesos": "11110000",
 }
 
 IPTC_CATEGORY_CODES: list[str] = list(IPTC_CATEGORIES.keys())
