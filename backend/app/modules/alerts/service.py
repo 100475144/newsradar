@@ -259,6 +259,7 @@ class AlertService:
             cron_expression=data.cron_expression,
             user_id=user_id,
             keyword=getattr(data, "keyword", None),
+            priority=int(getattr(data, "priority", 2)),
             notify_in_app=bool(getattr(data, "notify_in_app", True)),
             notify_email=bool(getattr(data, "notify_email", False)),
             is_active=True,
@@ -290,6 +291,8 @@ class AlertService:
             fields["cron_expression"] = data.cron_expression
         if getattr(data, "keyword", None) is not None:
             fields["keyword"] = data.keyword
+        if getattr(data, "priority", None) is not None:
+            fields["priority"] = int(data.priority)
         if getattr(data, "notify_in_app", None) is not None:
             fields["notify_in_app"] = bool(data.notify_in_app)
         if getattr(data, "notify_email", None) is not None:

@@ -41,6 +41,7 @@ class Alert(Base):
 
     # Campos internos (no en API oficial).
     keyword = Column(String(200), nullable=True)
+    priority = Column(Integer, nullable=False, default=2)  # 1=red, 2=yellow, 3=green
     is_active = Column(Boolean, nullable=False, default=True)
     notify_in_app = Column(Boolean, nullable=False, default=True)
     notify_email = Column(Boolean, nullable=False, default=False)

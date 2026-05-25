@@ -92,6 +92,7 @@ class AlertCreateInternal(AlertBase):
     """
 
     keyword: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    priority: int = Field(default=2, ge=1, le=3, description="Alert priority: 1=red (high), 2=yellow (medium), 3=green (low)")
     notify_in_app: bool = True
     notify_email: bool = False
 
@@ -109,6 +110,7 @@ class AlertUpdate(BaseModel):
     cron_expression: Optional[str] = Field(default=None, min_length=1, max_length=120)
     # Campos internos opcionales:
     keyword: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    priority: Optional[int] = Field(default=None, ge=1, le=3)
     notify_in_app: Optional[bool] = None
     notify_email: Optional[bool] = None
     is_active: Optional[bool] = None
@@ -156,6 +158,7 @@ class AlertResponse(AlertBase):
 
     # Campos extra (no en la API oficial pero útiles para nuestra UI).
     keyword: Optional[str] = None
+    priority: int = 2  # 1=red, 2=yellow, 3=green
     notify_in_app: bool = True
     notify_email: bool = False
     is_active: bool = True

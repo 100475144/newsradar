@@ -25,6 +25,7 @@ const EMPTY_FORM = {
   rss_channels_ids: [], // strings
   information_sources_ids: [], // strings
   cron_expression: '*/5 * * * *',
+  priority: 2, // 1=red (high), 2=yellow (medium), 3=green (low)
   notify_in_app: true,
   notify_email: false,
 }
@@ -65,6 +66,7 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, iptcCategor
       rss_channels_ids: form.rss_channels_ids.map(String),
       information_sources_ids: form.information_sources_ids.map(String),
       cron_expression: form.cron_expression,
+      priority: parseInt(form.priority, 10),
       keyword: form.keyword.trim() || undefined,
       notify_in_app: form.notify_in_app,
       notify_email: form.notify_email,
@@ -108,6 +110,16 @@ function AlertForm({ initial, onSave, onCancel, isSubmitting, error, iptcCategor
           <span>{t('alerts.alert_name')}</span>
           <input type="text" name="name" value={form.name} onChange={change} required maxLength={200} />
         </label>
+        <label className="field">
+          <span>{t('alerts.priority') || 'Priority'}</span>
+          <select name="priority" value={form.priority} onChange={change} required>
+            <option value="1">1 - {t('alerts.priority_high') || 'High (Red)'}</option>
+            <option value="2">2 - {t('alerts.priority_medium') || 'Medium (Yellow)'}</option>
+            <option value="3">3 - {t('alerts.priority_low') || 'Low (Green)'}</option>
+          </select>
+        </label>
+      </div>
+      <div className="field-grid">
         <label className="field">
           <span>{t('alerts.keyword')}</span>
           <input
@@ -357,6 +369,7 @@ export default function AlertsPage() {
         rss_channels_ids: (alert.rss_channels_ids || []).map(String),
         information_sources_ids: (alert.information_sources_ids || []).map(String),
         cron_expression: alert.cron_expression,
+        priority: alert.priority || 2,
         notify_in_app: alert.notify_in_app,
         notify_email: alert.notify_email,
       },
@@ -432,6 +445,22 @@ export default function AlertsPage() {
                   </span>
                 ) : null}
                 <span className="source-row__url">cron: {alert.cron_expression}</span>
+                <span
+                  className="source-row__priority"
+                  style={{
+                    display: 'inline-block',
+                    paddingLeft: '0.5rem',
+                    color:
+                      alert.priority === 1 ? '#e74c3c' : alert.priority === 2 ? '#f39c12' : '#27ae60',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  {alert.priority === 1
+                    ? `● ${t('alerts.priority_high') || 'High'}`
+                    : alert.priority === 2
+                      ? `● ${t('alerts.priority_medium') || 'Medium'}`
+                      : `● ${t('alerts.priority_low') || 'Low'}`}
+                </span>
               </div>
               <span className={alert.is_active ? 'source-badge source-badge--active' : 'source-badge source-badge--inactive'}>
                 {alert.is_active ? (t('sources.active') || 'Activo') : (t('sources.inactive') || 'Inactivo')}
