@@ -189,7 +189,7 @@ def _normalize_id_list(values: list) -> list[str]:
 
 
 class AlertService:
-    MAX_ALERTS = 20
+    MAX_ALERTS = 2
 
     def __init__(self, repository: AlertRepository):
         self.repository = repository
@@ -213,7 +213,7 @@ class AlertService:
         if self.repository.count_for_user(user_id) >= self.MAX_ALERTS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="A manager can only create up to 20 alerts.",
+                detail="A manager can only create up to 2 alerts.",
             )
 
         # Enforce max 1 category per alert.

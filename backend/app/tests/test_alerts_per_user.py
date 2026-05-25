@@ -99,11 +99,11 @@ def test_alert_validation_rejects_invalid_cron(client, db):
 
 
 def test_alert_max_limit_per_gestor(client, db):
-    """Checklist #3: máx 20 alertas por gestor."""
+    """Checklist #3: máx 2 alertas por gestor."""
     user = create_test_user(db, email="alert-limit@example.com")
     headers = auth_headers_for(client, user.email)
 
-    for i in range(20):
+    for i in range(2):
         payload = {**VALID_PAYLOAD, "name": f"Alert #{i}"}
         response = client.post(
             "/api/v1/users/me/alerts", json=payload, headers=headers,
@@ -116,4 +116,4 @@ def test_alert_max_limit_per_gestor(client, db):
         "/api/v1/users/me/alerts", json=payload, headers=headers,
     )
     assert response.status_code == 400
-    assert "20" in response.json()["detail"]
+    assert "2" in response.json()["detail"]
